@@ -36,7 +36,13 @@ export class DragController {
 
   private onPointerDown(pointer: Phaser.Input.Pointer): void {
     if (this.activeHero) return; // Only one drag at a time
-    if (this.engine.getState().isPaused || this.engine.getState().isGameOver) return;
+    if (
+      this.engine.getState().isPaused ||
+      this.engine.getState().isGameOver ||
+      this.engine.getState().isVictory
+    ) {
+      return;
+    }
 
     const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
 
@@ -72,6 +78,15 @@ export class DragController {
   }
 
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
+    if (
+      this.engine.getState().isPaused ||
+      this.engine.getState().isGameOver ||
+      this.engine.getState().isVictory
+    ) {
+      this.cancelDrag();
+      return;
+    }
+
     if (this.isDragging && this.activeHero) {
       // 1. Target is Egg
       if (isPointInEggArea(pointer.x, pointer.y)) {
