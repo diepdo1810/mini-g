@@ -19,6 +19,7 @@ export class HudRenderer {
 
   private overlayBg?: Phaser.GameObjects.Rectangle;
   private bannerText?: Phaser.GameObjects.Text;
+  private statsText?: Phaser.GameObjects.Text;
   private restartBtn?: Phaser.GameObjects.Text;
 
   constructor(scene: Phaser.Scene, callbacks: HudCallbacks) {
@@ -32,7 +33,7 @@ export class HudRenderer {
       fontFamily: 'sans-serif'
     });
 
-    this.baseHpText = scene.add.text(24, 52, 'Base HP: 3', {
+    this.baseHpText = scene.add.text(24, 52, 'Base HP: 3/3', {
       fontSize: '15px',
       color: '#ef4444',
       fontStyle: 'bold',
@@ -69,7 +70,7 @@ export class HudRenderer {
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', callbacks.onToggleDebug);
 
-    // Dynamic notification banner (Hatch / Merge / Warning)
+    // Dynamic notification banner (Hatch / Merge / Wave transition / Warning)
     this.notificationText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 600, '', {
       fontSize: '15px',
       fontStyle: 'bold',
@@ -93,7 +94,6 @@ export class HudRenderer {
       this.notificationText.setText(state.notification.text);
       this.notificationText.setColor(state.notification.color);
       this.notificationText.setVisible(true);
-      // Gentle fade effect as life decreases
       const alpha = Math.min(1, state.notification.life / 0.5);
       this.notificationText.setAlpha(alpha);
     } else {
@@ -109,12 +109,12 @@ export class HudRenderer {
           GameBalance.SCREEN.WIDTH,
           GameBalance.SCREEN.HEIGHT,
           0x000000,
-          0.75
+          0.8
         );
 
         this.bannerText = this.scene.add.text(
           GameBalance.SCREEN.WIDTH / 2,
-          GameBalance.SCREEN.HEIGHT / 2 - 40,
+          GameBalance.SCREEN.HEIGHT / 2 - 60,
           state.isVictory ? 'VICTORY!' : 'GAME OVER',
           {
             fontSize: '32px',
@@ -124,16 +124,27 @@ export class HudRenderer {
           }
         ).setOrigin(0.5);
 
+        this.statsText = this.scene.add.text(
+          GameBalance.SCREEN.WIDTH / 2,
+          GameBalance.SCREEN.HEIGHT / 2 - 10,
+          `Kills: ${state.kills}   •   Wave: ${state.wave}/5`,
+          {
+            fontSize: '15px',
+            color: '#cbd5e1',
+            fontFamily: 'sans-serif'
+          }
+        ).setOrigin(0.5);
+
         this.restartBtn = this.scene.add.text(
           GameBalance.SCREEN.WIDTH / 2,
-          GameBalance.SCREEN.HEIGHT / 2 + 30,
+          GameBalance.SCREEN.HEIGHT / 2 + 50,
           'RESTART',
           {
             fontSize: '18px',
             fontStyle: 'bold',
             color: '#ffffff',
             backgroundColor: '#2563eb',
-            padding: { left: 16, right: 16, top: 8, bottom: 8 },
+            padding: { left: 20, right: 20, top: 10, bottom: 10 },
             fontFamily: 'sans-serif'
           }
         )
@@ -145,9 +156,11 @@ export class HudRenderer {
       if (this.overlayBg) {
         this.overlayBg.destroy();
         this.bannerText?.destroy();
+        this.statsText?.destroy();
         this.restartBtn?.destroy();
         this.overlayBg = undefined;
         this.bannerText = undefined;
+        this.statsText = undefined;
         this.restartBtn = undefined;
       }
     }
@@ -162,7 +175,7 @@ export class HudRenderer {
     this.notificationText.destroy();
     this.overlayBg?.destroy();
     this.bannerText?.destroy();
+    this.statsText?.destroy();
     this.restartBtn?.destroy();
   }
 }
-

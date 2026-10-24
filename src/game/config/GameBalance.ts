@@ -54,6 +54,18 @@ export const GameBalance = {
     MAX_HP: 3,
     INITIAL_HP: 3
   },
+  WAVES: {
+    TOTAL: 5,
+    SPAWN_INTERVAL: 2.5,
+    INTER_WAVE_DELAY: 2.0,
+    CONFIGS: [
+      { monsterCount: 1, monsterHp: 3, monsterSpeed: 32 },
+      { monsterCount: 2, monsterHp: 4, monsterSpeed: 34 },
+      { monsterCount: 2, monsterHp: 6, monsterSpeed: 36 },
+      { monsterCount: 3, monsterHp: 8, monsterSpeed: 38 },
+      { monsterCount: 4, monsterHp: 12, monsterSpeed: 40 }
+    ] as const
+  },
   EGG: {
     INITIAL_HP: 3,
     HP_STEP: 2,

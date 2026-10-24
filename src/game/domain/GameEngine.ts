@@ -14,9 +14,16 @@ export class GameEngine {
   private lastEggHitTick: Map<string, number> = new Map();
   private currentTick = 0;
   private randomSource: RandomSource;
+
   private nextHeroId = 2;
   private nextEggId = 1;
   private nextDamageId = 1;
+  private nextMonsterId = 2;
+
+  // Wave Scheduler State
+  private monstersSpawnedThisWave: number = 1;
+  private spawnTimer: number = GameBalance.WAVES.SPAWN_INTERVAL;
+  private interWaveTimer: number = GameBalance.WAVES.INTER_WAVE_DELAY;
 
   constructor(initialState?: GameState, randomSource?: RandomSource) {
     this.state = initialState ?? createInitialState();
@@ -189,6 +196,10 @@ export class GameEngine {
         this.nextDamageId = 1;
         this.nextHeroId = 2;
         this.nextEggId = 1;
+        this.nextMonsterId = 2;
+        this.monstersSpawnedThisWave = 1;
+        this.spawnTimer = GameBalance.WAVES.SPAWN_INTERVAL;
+        this.interWaveTimer = GameBalance.WAVES.INTER_WAVE_DELAY;
         break;
 
       case 'ATTACK_EGG': {
@@ -315,17 +326,36 @@ export class GameEngine {
       }
     }
 
-    // 2. Rotate hero weapons
+    // 2. Wave Scheduler: Spawn monsters within current wave
+    const currentWaveIndex = Math.min(this.state.wave - 1, GameBalance.WAVES.CONFIGS.length - 1);
+    const currentWaveConfig = GameBalance.WAVES.CONFIGS[currentWaveIndex];
+
+    if (this.monstersSpawnedThisWave < currentWaveConfig.monsterCount) {
+      this.spawnTimer -= dt;
+      if (this.spawnTimer <= 0) {
+        this.state.monsters.push({
+          id: `monster-${this.nextMonsterId++}`,
+          hp: currentWaveConfig.monsterHp,
+          maxHp: currentWaveConfig.monsterHp,
+          progress: 0,
+          speed: currentWaveConfig.monsterSpeed
+        });
+        this.monstersSpawnedThisWave += 1;
+        this.spawnTimer = GameBalance.WAVES.SPAWN_INTERVAL;
+      }
+    }
+
+    // 3. Rotate hero weapons
     for (const hero of this.state.heroes) {
       hero.angle = (hero.angle + GameBalance.SWORD.ANGULAR_SPEED * dt) % (Math.PI * 2);
     }
 
-    // 3. Move monsters along path
+    // 4. Move monsters along path
     for (const monster of this.state.monsters) {
       monster.progress += monster.speed * dt;
     }
 
-    // 4. Combat: Hit detection between heroes' swords and monsters (purely monster damage!)
+    // 5. Combat: Hit detection between heroes' swords and monsters (purely monster damage!)
     const monstersToRemove = new Set<string>();
 
     for (const hero of this.state.heroes) {
@@ -372,7 +402,7 @@ export class GameEngine {
       }
     }
 
-    // 5. Combat: Hit detection between heroes' swords and egg (orbit damage!)
+    // 6. Combat: Hit detection between heroes' swords and egg (orbit damage!)
     const eggCenter = { x: GameBalance.EGG.CENTER_X, y: GameBalance.EGG.CENTER_Y };
     for (const hero of this.state.heroes) {
       const eggPairKey = `${hero.id}:${this.state.egg.id}`;
@@ -395,7 +425,7 @@ export class GameEngine {
       }
     }
 
-    // 6. Check monsters escaping (completing perimeter)
+    // 7. Check monsters escaping (completing perimeter)
     for (const monster of this.state.monsters) {
       if (monstersToRemove.has(monster.id)) continue;
 
@@ -405,6 +435,11 @@ export class GameEngine {
 
         if (this.state.baseHp <= 0) {
           this.state.isGameOver = true;
+          this.state.notification = {
+            text: 'GAME OVER — Căn cứ thất thủ!',
+            color: '#ef4444',
+            life: 10
+          };
         }
       }
     }
@@ -421,14 +456,44 @@ export class GameEngine {
       }
     }
 
-    // 7. Update floating damage numbers
+    // 8. Wave Progression / Victory Check
+    if (
+      this.monstersSpawnedThisWave >= currentWaveConfig.monsterCount &&
+      this.state.monsters.length === 0
+    ) {
+      if (this.state.wave >= GameBalance.WAVES.TOTAL) {
+        if (this.state.baseHp > 0 && !this.state.isVictory) {
+          this.state.isVictory = true;
+          this.state.notification = {
+            text: 'VICTORY! Bạn đã hoàn thành 5 wave!',
+            color: '#10b981',
+            life: 10
+          };
+        }
+      } else {
+        this.interWaveTimer -= dt;
+        if (this.interWaveTimer <= 0) {
+          this.state.wave += 1;
+          this.monstersSpawnedThisWave = 0;
+          this.spawnTimer = 0.5; // Brief 0.5s pause before first monster of new wave
+          this.interWaveTimer = GameBalance.WAVES.INTER_WAVE_DELAY;
+          this.state.notification = {
+            text: `WAVE ${this.state.wave} Bắt đầu!`,
+            color: '#38bdf8',
+            life: 2.0
+          };
+        }
+      }
+    }
+
+    // 9. Update floating damage numbers
     this.state.damageNumbers = this.state.damageNumbers.filter((dmg) => {
       dmg.life -= dt;
       dmg.y -= 25 * dt;
       return dmg.life > 0;
     });
 
-    // 8. Update notification life
+    // 10. Update notification life
     if (this.state.notification) {
       this.state.notification.life -= dt;
       if (this.state.notification.life <= 0) {

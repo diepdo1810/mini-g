@@ -46,3 +46,9 @@ export interface DamageNumber {
   maxLife: number;
 }
 
+export interface WaveConfig {
+  monsterCount: number;
+  monsterHp: number;
+  monsterSpeed: number;
+}
+
