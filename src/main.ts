@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { MapScene } from './game/scenes/MapScene';
 import { GameScene } from './game/scenes/GameScene';
 import { GameBalance } from './game/config/GameBalance';
 
@@ -15,7 +16,7 @@ const config: Phaser.Types.Core.GameConfig = {
   render: {
     preserveDrawingBuffer: true
   },
-  scene: [GameScene]
+  scene: [MapScene, GameScene]
 };
 
 window.addEventListener('DOMContentLoaded', () => {
