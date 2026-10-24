@@ -13,7 +13,7 @@ export const GameBalance = {
     Y: 160
   },
   PATH: {
-    OFFSET: 26,
+    OFFSET: 20,
     get RECT(): PathRect {
       const left = GameBalance.BOARD.X - GameBalance.PATH.OFFSET;
       const right = GameBalance.BOARD.X + GameBalance.BOARD.COLS * GameBalance.BOARD.CELL_SIZE + GameBalance.PATH.OFFSET;
@@ -37,7 +37,7 @@ export const GameBalance = {
   },
   SWORD: {
     OFFSET_START: 14,
-    LENGTH: 56, // Reaches 70 px from hero center
+    LENGTH: 58, // Reaches 72 px from hero center (hitbox reaches 80 px)
     WIDTH: 8,
     HITBOX_RADIUS: 8, // Collision capsule radius
     ANGULAR_SPEED: Math.PI * 2 * 1.15, // rad/s (~1.15 rotations per sec)
@@ -58,12 +58,13 @@ export const GameBalance = {
     INITIAL_HP: 3,
     HP_STEP: 2,
     CENTER_X: 225,
-    CENTER_Y: 590,
-    RADIUS_X: 45,
-    RADIUS_Y: 55,
+    CENTER_Y: 516,
+    RADIUS_X: 32,
+    RADIUS_Y: 36,
     TOUCH_PADDING: 12,
     COLOR: 0xf59e0b,
-    ATTACK_COOLDOWN_MS: 250
+    DRAG_COOLDOWN_MS: 250,
+    ORBIT_COOLDOWN_MS: 500
   },
   DRAG: {
     MIN_DISTANCE: 18,

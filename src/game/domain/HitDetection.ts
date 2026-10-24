@@ -64,3 +64,34 @@ export function isSwordHittingMonster(
   return dist <= swordHitboxRadius + monsterRadius;
 }
 
+export function isSwordHittingEgg(
+  heroCenter: Point,
+  angle: number,
+  offsetStart: number,
+  length: number,
+  swordHitboxRadius: number,
+  eggCenter: Point,
+  eggRadiusX: number,
+  eggRadiusY: number
+): boolean {
+  const segment = getSwordSegment(heroCenter, angle, offsetStart, length);
+  const rx = eggRadiusX + swordHitboxRadius;
+  const ry = eggRadiusY + swordHitboxRadius;
+
+  const samples = 8;
+  for (let i = 0; i <= samples; i++) {
+    const t = i / samples;
+    const px = segment.start.x + t * (segment.end.x - segment.start.x);
+    const py = segment.start.y + t * (segment.end.y - segment.start.y);
+
+    const dx = px - eggCenter.x;
+    const dy = py - eggCenter.y;
+
+    if ((dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1) {
+      return true;
+    }
+  }
+
+  return false;
+}
+

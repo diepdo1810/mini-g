@@ -44,3 +44,4 @@ export class MockRandomSource implements RandomSource {
     return items[Math.min(idx, items.length - 1)];
   }
 }
+

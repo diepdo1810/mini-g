@@ -18,6 +18,7 @@ export interface Monster {
 }
 
 export interface Egg {
+  id: string;
   hp: number;
   maxHp: number;
   hatchCount: number;

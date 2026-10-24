@@ -3,15 +3,19 @@ import { createInitialState, type GameState } from './GameState';
 import type { GameAction } from './GameActions';
 import type { Point, Hero, HeroKind } from './types';
 import { getPerimeter, getPositionOnPath } from './PathMath';
-import { isSwordHittingMonster } from './HitDetection';
+import { isSwordHittingMonster, isSwordHittingEgg } from './HitDetection';
 import { DefaultRandomSource, type RandomSource } from './RandomSource';
 
 export class GameEngine {
   private state: GameState;
   private hitCooldowns: Map<string, number> = new Map();
-  private eggCooldowns: Map<string, number> = new Map();
+  private eggOrbitCooldowns: Map<string, number> = new Map();
+  private eggDragCooldowns: Map<string, number> = new Map();
+  private lastEggHitTick: Map<string, number> = new Map();
+  private currentTick = 0;
   private randomSource: RandomSource;
   private nextHeroId = 2;
+  private nextEggId = 1;
   private nextDamageId = 1;
 
   constructor(initialState?: GameState, randomSource?: RandomSource) {
@@ -48,6 +52,53 @@ export class GameEngine {
     return empty;
   }
 
+  public applyEggDamage(hero: Hero, source: 'orbit' | 'drag'): boolean {
+    if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return false;
+    if (this.state.egg.readyToHatch) return false;
+
+    const eggPairKey = `${hero.id}:${this.state.egg.id}`;
+
+    // Deduplicate if both orbit and drag happen in the same simulation tick
+    if (this.lastEggHitTick.get(eggPairKey) === this.currentTick) return false;
+
+    if (source === 'drag') {
+      const cd = this.eggDragCooldowns.get(eggPairKey) ?? 0;
+      if (cd > 0) return false;
+      this.eggDragCooldowns.set(eggPairKey, GameBalance.EGG.DRAG_COOLDOWN_MS / 1000);
+      // Suppress immediate orbit hit to prevent double hit
+      this.eggOrbitCooldowns.set(
+        eggPairKey,
+        Math.max(this.eggOrbitCooldowns.get(eggPairKey) ?? 0, GameBalance.EGG.DRAG_COOLDOWN_MS / 1000)
+      );
+    } else {
+      const cd = this.eggOrbitCooldowns.get(eggPairKey) ?? 0;
+      if (cd > 0) return false;
+      this.eggOrbitCooldowns.set(eggPairKey, GameBalance.EGG.ORBIT_COOLDOWN_MS / 1000);
+    }
+
+    this.lastEggHitTick.set(eggPairKey, this.currentTick);
+
+    const atk = Math.max(1, 2 ** hero.tier);
+    this.state.egg.hp = Math.max(0, this.state.egg.hp - atk);
+
+    // Spawn floating damage on egg
+    this.state.damageNumbers.push({
+      id: `dmg-${this.nextDamageId++}`,
+      x: GameBalance.EGG.CENTER_X,
+      y: GameBalance.EGG.CENTER_Y - 20,
+      amount: atk,
+      life: 0.6,
+      maxLife: 0.6
+    });
+
+    if (this.state.egg.hp === 0) {
+      this.state.egg.readyToHatch = true;
+      this.tryHatchEgg();
+    }
+
+    return true;
+  }
+
   public tryHatchEgg(): boolean {
     if (!this.state.egg.readyToHatch) return false;
 
@@ -61,9 +112,21 @@ export class GameEngine {
       return false;
     }
 
-    const cell = this.randomSource.choose(emptyCells);
+    let cell: { row: number; col: number };
     let kind: HeroKind = 'A';
-    if (this.state.egg.hatchCount > 0) {
+
+    if (this.state.egg.hatchCount === 0) {
+      // First hatch: prioritized spawn at (row=4, col=2) so player immediately sees weapon hitting egg!
+      const targetCell = emptyCells.find((c) => c.row === 4 && c.col === 2);
+      if (targetCell) {
+        cell = targetCell;
+      } else {
+        const bottomRowCell = emptyCells.find((c) => c.row === 4);
+        cell = bottomRowCell ?? this.randomSource.choose(emptyCells);
+      }
+      kind = 'A';
+    } else {
+      cell = this.randomSource.choose(emptyCells);
       kind = this.randomSource.next() < 0.5 ? 'A' : 'B';
     }
 
@@ -79,11 +142,25 @@ export class GameEngine {
     this.state.heroes.push(newHero);
     this.state.egg.hatchCount += 1;
 
-    // Reset egg with increased HP
+    // Reset egg with increased HP and new ID
     const nextMaxHp = GameBalance.EGG.INITIAL_HP + GameBalance.EGG.HP_STEP * this.state.egg.hatchCount;
+    const oldEggId = this.state.egg.id;
+    this.nextEggId += 1;
+    this.state.egg.id = `egg-${this.nextEggId}`;
     this.state.egg.maxHp = nextMaxHp;
     this.state.egg.hp = nextMaxHp;
     this.state.egg.readyToHatch = false;
+
+    // Clean up cooldowns for old egg
+    for (const key of this.eggOrbitCooldowns.keys()) {
+      if (key.endsWith(`:${oldEggId}`)) this.eggOrbitCooldowns.delete(key);
+    }
+    for (const key of this.eggDragCooldowns.keys()) {
+      if (key.endsWith(`:${oldEggId}`)) this.eggDragCooldowns.delete(key);
+    }
+    for (const key of this.lastEggHitTick.keys()) {
+      if (key.endsWith(`:${oldEggId}`)) this.lastEggHitTick.delete(key);
+    }
 
     this.state.notification = {
       text: `+Hero ${kind} (ATK 1)`,
@@ -105,38 +182,19 @@ export class GameEngine {
       case 'RESTART':
         this.state = createInitialState();
         this.hitCooldowns.clear();
-        this.eggCooldowns.clear();
+        this.eggOrbitCooldowns.clear();
+        this.eggDragCooldowns.clear();
+        this.lastEggHitTick.clear();
+        this.currentTick = 0;
         this.nextDamageId = 1;
         this.nextHeroId = 2;
+        this.nextEggId = 1;
         break;
 
       case 'ATTACK_EGG': {
-        if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return;
-        if (this.state.egg.readyToHatch) return;
-
         const hero = this.state.heroes.find((h) => h.id === action.heroId);
-        if (!hero) return;
-
-        const cooldown = this.eggCooldowns.get(hero.id) ?? 0;
-        if (cooldown > 0) return;
-
-        const atk = Math.max(1, 2 ** hero.tier);
-        this.state.egg.hp = Math.max(0, this.state.egg.hp - atk);
-        this.eggCooldowns.set(hero.id, GameBalance.EGG.ATTACK_COOLDOWN_MS / 1000);
-
-        // Spawn floating damage on egg
-        this.state.damageNumbers.push({
-          id: `dmg-${this.nextDamageId++}`,
-          x: GameBalance.EGG.CENTER_X,
-          y: GameBalance.EGG.CENTER_Y - 24,
-          amount: atk,
-          life: 0.6,
-          maxLife: 0.6
-        });
-
-        if (this.state.egg.hp === 0) {
-          this.state.egg.readyToHatch = true;
-          this.tryHatchEgg();
+        if (hero) {
+          this.applyEggDamage(hero, 'drag');
         }
         break;
       }
@@ -157,7 +215,6 @@ export class GameEngine {
         const hero = this.state.heroes.find((h) => h.id === heroId);
         if (!hero) return;
 
-        // Ensure target cell is empty
         const isOccupied = this.state.heroes.some(
           (h) => h.row === targetRow && h.col === targetCol
         );
@@ -181,16 +238,23 @@ export class GameEngine {
           target.tier += 1;
           const newAtk = 2 ** target.tier;
 
-          // Remove source hero
           this.state.heroes = this.state.heroes.filter((h) => h.id !== source.id);
 
-          // Cleanup cooldowns for removed hero
           for (const key of this.hitCooldowns.keys()) {
             if (key.startsWith(`${source.id}:`)) {
               this.hitCooldowns.delete(key);
             }
           }
-          this.eggCooldowns.delete(source.id);
+          for (const key of this.eggOrbitCooldowns.keys()) {
+            if (key.startsWith(`${source.id}:`)) {
+              this.eggOrbitCooldowns.delete(key);
+            }
+          }
+          for (const key of this.eggDragCooldowns.keys()) {
+            if (key.startsWith(`${source.id}:`)) {
+              this.eggDragCooldowns.delete(key);
+            }
+          }
 
           this.state.notification = {
             text: `MERGE ${target.kind} ${oldAtk} → ${newAtk}`,
@@ -198,7 +262,6 @@ export class GameEngine {
             life: 2.0
           };
 
-          // If egg was waiting to hatch due to full board, hatch now!
           this.tryHatchEgg();
         } else {
           this.state.notification = {
@@ -220,6 +283,7 @@ export class GameEngine {
       return;
     }
 
+    this.currentTick += 1;
     const dt = Math.min(rawDeltaSeconds, GameBalance.COMBAT.MAX_DELTA_SECONDS);
     const perimeter = this.getPathPerimeter();
 
@@ -233,12 +297,21 @@ export class GameEngine {
       }
     }
 
-    for (const [heroId, remaining] of this.eggCooldowns.entries()) {
+    for (const [key, remaining] of this.eggOrbitCooldowns.entries()) {
       const nextTime = remaining - dt;
       if (nextTime <= 0) {
-        this.eggCooldowns.delete(heroId);
+        this.eggOrbitCooldowns.delete(key);
       } else {
-        this.eggCooldowns.set(heroId, nextTime);
+        this.eggOrbitCooldowns.set(key, nextTime);
+      }
+    }
+
+    for (const [key, remaining] of this.eggDragCooldowns.entries()) {
+      const nextTime = remaining - dt;
+      if (nextTime <= 0) {
+        this.eggDragCooldowns.delete(key);
+      } else {
+        this.eggDragCooldowns.set(key, nextTime);
       }
     }
 
@@ -252,7 +325,7 @@ export class GameEngine {
       monster.progress += monster.speed * dt;
     }
 
-    // 4. Combat: Hit detection between heroes' swords and monsters
+    // 4. Combat: Hit detection between heroes' swords and monsters (purely monster damage!)
     const monstersToRemove = new Set<string>();
 
     for (const hero of this.state.heroes) {
@@ -299,7 +372,30 @@ export class GameEngine {
       }
     }
 
-    // 5. Check monsters escaping (completing perimeter)
+    // 5. Combat: Hit detection between heroes' swords and egg (orbit damage!)
+    const eggCenter = { x: GameBalance.EGG.CENTER_X, y: GameBalance.EGG.CENTER_Y };
+    for (const hero of this.state.heroes) {
+      const eggPairKey = `${hero.id}:${this.state.egg.id}`;
+      if (this.lastEggHitTick.get(eggPairKey) === this.currentTick) continue;
+
+      const heroCenter = this.getHeroCenter(hero);
+      const isEggHit = isSwordHittingEgg(
+        heroCenter,
+        hero.angle,
+        GameBalance.SWORD.OFFSET_START,
+        GameBalance.SWORD.LENGTH,
+        GameBalance.SWORD.HITBOX_RADIUS,
+        eggCenter,
+        GameBalance.EGG.RADIUS_X,
+        GameBalance.EGG.RADIUS_Y
+      );
+
+      if (isEggHit) {
+        this.applyEggDamage(hero, 'orbit');
+      }
+    }
+
+    // 6. Check monsters escaping (completing perimeter)
     for (const monster of this.state.monsters) {
       if (monstersToRemove.has(monster.id)) continue;
 
@@ -325,14 +421,14 @@ export class GameEngine {
       }
     }
 
-    // 6. Update floating damage numbers
+    // 7. Update floating damage numbers
     this.state.damageNumbers = this.state.damageNumbers.filter((dmg) => {
       dmg.life -= dt;
       dmg.y -= 25 * dt;
       return dmg.life > 0;
     });
 
-    // 7. Update notification life
+    // 8. Update notification life
     if (this.state.notification) {
       this.state.notification.life -= dt;
       if (this.state.notification.life <= 0) {

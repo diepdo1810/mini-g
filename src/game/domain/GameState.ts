@@ -44,6 +44,7 @@ export function createInitialState(): GameState {
       }
     ],
     egg: {
+      id: 'egg-1',
       hp: GameBalance.EGG.INITIAL_HP,
       maxHp: GameBalance.EGG.INITIAL_HP,
       hatchCount: 0,

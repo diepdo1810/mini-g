@@ -39,7 +39,7 @@ describe('GameEngine - Phase 1 logic', () => {
 
     // Align hero weapon angle straight up (-PI/2) and place monster at top edge
     hero.angle = -Math.PI / 2;
-    monster.progress = 166; // approx top center
+    monster.progress = 160; // top center (x=225, y=140)
 
     const hpBefore = monster.hp;
 
@@ -59,7 +59,7 @@ describe('GameEngine - Phase 1 logic', () => {
     }
     // Now align sword and monster for the next hit
     hero.angle = -Math.PI / 2;
-    monster.progress = 166;
+    monster.progress = 160;
     engine.tick(0.001);
     expect(engine.getState().monsters[0]?.hp).toBe(hpAfter - 1);
   });
@@ -69,7 +69,7 @@ describe('GameEngine - Phase 1 logic', () => {
     monster.hp = 1;
     const hero = engine.getState().heroes[0];
     hero.angle = -Math.PI / 2;
-    monster.progress = 166;
+    monster.progress = 160;
 
     engine.tick(0.001);
 

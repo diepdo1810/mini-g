@@ -15,7 +15,6 @@ export class HudRenderer {
   private killsText: Phaser.GameObjects.Text;
   private pauseBtn: Phaser.GameObjects.Text;
   private debugBtn: Phaser.GameObjects.Text;
-  private messageText: Phaser.GameObjects.Text;
   private notificationText: Phaser.GameObjects.Text;
 
   private overlayBg?: Phaser.GameObjects.Rectangle;
@@ -70,15 +69,8 @@ export class HudRenderer {
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', callbacks.onToggleDebug);
 
-    // Status / phase hint message
-    this.messageText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 720, 'PHASE 3: Đập trứng nở Hero • Ghép 2048 tăng ATK', {
-      fontSize: '13px',
-      color: '#64748b',
-      fontFamily: 'sans-serif'
-    }).setOrigin(0.5);
-
     // Dynamic notification banner (Hatch / Merge / Warning)
-    this.notificationText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 680, '', {
+    this.notificationText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 600, '', {
       fontSize: '15px',
       fontStyle: 'bold',
       color: '#ffffff',
@@ -167,7 +159,6 @@ export class HudRenderer {
     this.killsText.destroy();
     this.pauseBtn.destroy();
     this.debugBtn.destroy();
-    this.messageText.destroy();
     this.notificationText.destroy();
     this.overlayBg?.destroy();
     this.bannerText?.destroy();
