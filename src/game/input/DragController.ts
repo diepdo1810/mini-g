@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { GameBalance } from '../config/GameBalance';
 import { GameEngine } from '../domain/GameEngine';
 import type { Hero, Point } from '../domain/types';
-import { isPointInEggArea } from '../domain/EggMath';
+
 
 export class DragController {
   private scene: Phaser.Scene;
@@ -88,9 +88,14 @@ export class DragController {
     }
 
     if (this.isDragging && this.activeHero) {
-      // 1. Target is Egg
-      if (isPointInEggArea(pointer.x, pointer.y)) {
-        this.engine.dispatch({ type: 'ATTACK_EGG', heroId: this.activeHero.id });
+      // 1. Target is an Egg
+      const targetEgg = this.engine.getEggAtPoint(pointer.x, pointer.y);
+      if (targetEgg) {
+        this.engine.dispatch({
+          type: 'ATTACK_EGG',
+          heroId: this.activeHero.id,
+          eggId: targetEgg.id
+        });
       } else {
         // 2. Target on Board
         const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;

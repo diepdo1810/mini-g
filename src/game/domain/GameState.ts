@@ -1,5 +1,6 @@
 import type { Hero, Monster, Egg, DamageNumber } from './types';
 import { GameBalance } from '../config/GameBalance';
+import { createEggsForLevel } from './EggProgression';
 
 export interface NotificationMessage {
   text: string;
@@ -8,8 +9,11 @@ export interface NotificationMessage {
 }
 
 export interface GameState {
+  currentLevelId: number;
+  totalWaves: number;
   heroes: Hero[];
   monsters: Monster[];
+  eggs: Egg[];
   egg: Egg;
   baseHp: number;
   maxBaseHp: number;
@@ -22,8 +26,16 @@ export interface GameState {
   notification?: NotificationMessage;
 }
 
-export function createInitialState(): GameState {
-  return {
+export function createInitialState(
+  levelId = 1,
+  totalWaves = 3,
+  highestUnlockedEggLevel = 1
+): GameState {
+  const initialEggs = createEggsForLevel(levelId, highestUnlockedEggLevel);
+
+  const state: GameState = {
+    currentLevelId: levelId,
+    totalWaves,
     heroes: [
       {
         id: 'hero-1',
@@ -34,21 +46,17 @@ export function createInitialState(): GameState {
         angle: 0
       }
     ],
-    monsters: [
-      {
-        id: 'monster-1',
-        hp: GameBalance.MONSTER.INITIAL_HP,
-        maxHp: GameBalance.MONSTER.INITIAL_HP,
-        progress: 0,
-        speed: GameBalance.MONSTER.INITIAL_WAVE_SPEED
+    monsters: [],
+    eggs: initialEggs,
+    get egg(): Egg {
+      return this.eggs[0];
+    },
+    set egg(val: Egg) {
+      if (this.eggs && this.eggs.length > 0) {
+        this.eggs[0] = val;
+      } else {
+        this.eggs = [val];
       }
-    ],
-    egg: {
-      id: 'egg-1',
-      hp: GameBalance.EGG.INITIAL_HP,
-      maxHp: GameBalance.EGG.INITIAL_HP,
-      hatchCount: 0,
-      readyToHatch: false
     },
     baseHp: GameBalance.BASE.INITIAL_HP,
     maxBaseHp: GameBalance.BASE.MAX_HP,
@@ -59,5 +67,7 @@ export function createInitialState(): GameState {
     isVictory: false,
     damageNumbers: []
   };
+
+  return state;
 }
 

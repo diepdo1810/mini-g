@@ -17,11 +17,26 @@ export interface Monster {
   speed: number; // px/s
 }
 
+export type EggStatus = 'active' | 'pending';
+
+export interface HatchReward {
+  kind: HeroKind;
+  heroTier: number;
+}
+
 export interface Egg {
   id: string;
+  slotIndex: number;
+  eggLevel: number;
   hp: number;
   maxHp: number;
   hatchCount: number;
+  status: EggStatus;
+  pendingHero: HatchReward | null;
+  x: number;
+  y: number;
+  radiusX: number;
+  radiusY: number;
   readyToHatch: boolean;
 }
 
