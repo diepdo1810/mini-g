@@ -1,6 +1,12 @@
 import type { Hero, Monster, Egg, DamageNumber } from './types';
 import { GameBalance } from '../config/GameBalance';
 
+export interface NotificationMessage {
+  text: string;
+  color: string;
+  life: number;
+}
+
 export interface GameState {
   heroes: Hero[];
   monsters: Monster[];
@@ -13,6 +19,7 @@ export interface GameState {
   isGameOver: boolean;
   isVictory: boolean;
   damageNumbers: DamageNumber[];
+  notification?: NotificationMessage;
 }
 
 export function createInitialState(): GameState {

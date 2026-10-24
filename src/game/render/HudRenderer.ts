@@ -16,6 +16,7 @@ export class HudRenderer {
   private pauseBtn: Phaser.GameObjects.Text;
   private debugBtn: Phaser.GameObjects.Text;
   private messageText: Phaser.GameObjects.Text;
+  private notificationText: Phaser.GameObjects.Text;
 
   private overlayBg?: Phaser.GameObjects.Rectangle;
   private bannerText?: Phaser.GameObjects.Text;
@@ -70,9 +71,19 @@ export class HudRenderer {
       .on('pointerdown', callbacks.onToggleDebug);
 
     // Status / phase hint message
-    this.messageText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 720, 'PHASE 2: Kéo Hero xuống đập trứng • Kiếm vẫn tự đánh', {
+    this.messageText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 720, 'PHASE 3: Đập trứng nở Hero • Ghép 2048 tăng ATK', {
       fontSize: '13px',
       color: '#64748b',
+      fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+
+    // Dynamic notification banner (Hatch / Merge / Warning)
+    this.notificationText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 680, '', {
+      fontSize: '15px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 3,
       fontFamily: 'sans-serif'
     }).setOrigin(0.5);
   }
@@ -84,6 +95,18 @@ export class HudRenderer {
     this.pauseBtn.setText(state.isPaused ? 'RESUME' : 'PAUSE');
     this.debugBtn.setText(debug ? 'DBG: ON' : 'DBG: OFF');
     this.debugBtn.setColor(debug ? '#10b981' : '#94a3b8');
+
+    // Render active notification
+    if (state.notification) {
+      this.notificationText.setText(state.notification.text);
+      this.notificationText.setColor(state.notification.color);
+      this.notificationText.setVisible(true);
+      // Gentle fade effect as life decreases
+      const alpha = Math.min(1, state.notification.life / 0.5);
+      this.notificationText.setAlpha(alpha);
+    } else {
+      this.notificationText.setVisible(false);
+    }
 
     // Handle Game Over / Victory overlay
     if (state.isGameOver || state.isVictory) {
@@ -145,6 +168,7 @@ export class HudRenderer {
     this.pauseBtn.destroy();
     this.debugBtn.destroy();
     this.messageText.destroy();
+    this.notificationText.destroy();
     this.overlayBg?.destroy();
     this.bannerText?.destroy();
     this.restartBtn?.destroy();

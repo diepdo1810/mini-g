@@ -73,9 +73,37 @@ export class DragController {
 
   private onPointerUp(pointer: Phaser.Input.Pointer): void {
     if (this.isDragging && this.activeHero) {
-      // Check if dropped onto egg
+      // 1. Target is Egg
       if (isPointInEggArea(pointer.x, pointer.y)) {
         this.engine.dispatch({ type: 'ATTACK_EGG', heroId: this.activeHero.id });
+      } else {
+        // 2. Target on Board
+        const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
+        const col = Math.floor((pointer.x - X) / CELL_SIZE);
+        const row = Math.floor((pointer.y - Y) / CELL_SIZE);
+
+        if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+          const targetHero = this.engine.getState().heroes.find(
+            (h) => h.row === row && h.col === col
+          );
+
+          if (!targetHero) {
+            // Target is an empty cell -> MOVE
+            this.engine.dispatch({
+              type: 'MOVE_HERO',
+              heroId: this.activeHero.id,
+              targetRow: row,
+              targetCol: col
+            });
+          } else if (targetHero.id !== this.activeHero.id) {
+            // Target is another hero -> MERGE
+            this.engine.dispatch({
+              type: 'MERGE_HERO',
+              sourceId: this.activeHero.id,
+              targetId: targetHero.id
+            });
+          }
+        }
       }
     }
 
@@ -95,6 +123,31 @@ export class DragController {
     if (!this.isDragging || !this.activeHero) return;
 
     const heroCenter = this.engine.getHeroCenter(this.activeHero);
+    const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
+
+    // Check hovered cell for hover highlight
+    const hoverCol = Math.floor((this.currentPoint.x - X) / CELL_SIZE);
+    const hoverRow = Math.floor((this.currentPoint.y - Y) / CELL_SIZE);
+
+    if (hoverCol >= 0 && hoverCol < COLS && hoverRow >= 0 && hoverRow < ROWS) {
+      const cellX = X + hoverCol * CELL_SIZE;
+      const cellY = Y + hoverRow * CELL_SIZE;
+      const hoverHero = this.engine.getState().heroes.find(
+        (h) => h.row === hoverRow && h.col === hoverCol
+      );
+
+      if (!hoverHero) {
+        // Highlight empty cell green
+        this.graphics.lineStyle(2, 0x10b981, 0.9);
+        this.graphics.strokeRect(cellX + 2, cellY + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+      } else if (hoverHero.id !== this.activeHero.id) {
+        const canMerge =
+          hoverHero.kind === this.activeHero.kind && hoverHero.tier === this.activeHero.tier;
+        // Highlight compatible merge golden yellow, mismatch red
+        this.graphics.lineStyle(2, canMerge ? 0xfacc15 : 0xef4444, 0.9);
+        this.graphics.strokeRect(cellX + 2, cellY + 2, CELL_SIZE - 4, CELL_SIZE - 4);
+      }
+    }
 
     // 1. Draw connecting line from hero center to pointer
     this.graphics.lineStyle(2, GameBalance.DRAG.LINE_COLOR, 0.8);
@@ -107,7 +160,8 @@ export class DragController {
 
     // 2. Draw drag ghost at pointer
     const size = GameBalance.HERO.SIZE;
-    const color = this.activeHero.kind === 'A' ? GameBalance.HERO.COLORS.A : GameBalance.HERO.COLORS.B;
+    const color =
+      this.activeHero.kind === 'A' ? GameBalance.HERO.COLORS.A : GameBalance.HERO.COLORS.B;
 
     this.graphics.fillStyle(color, GameBalance.DRAG.GHOST_ALPHA);
     this.graphics.fillRoundedRect(

@@ -10,3 +10,4 @@ export function isPointInEggArea(x: number, y: number): boolean {
 
   return (dx * dx) / (rx * rx) + (dy * dy) / (ry * ry) <= 1;
 }
+

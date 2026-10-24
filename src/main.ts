@@ -19,5 +19,6 @@ const config: Phaser.Types.Core.GameConfig = {
 };
 
 window.addEventListener('DOMContentLoaded', () => {
-  new Phaser.Game(config);
+  const game = new Phaser.Game(config);
+  (window as unknown as { __PHASER_GAME__: Phaser.Game }).__PHASER_GAME__ = game;
 });

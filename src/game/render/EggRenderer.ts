@@ -80,3 +80,4 @@ export class EggRenderer {
     this.hintText.destroy();
   }
 }
+
