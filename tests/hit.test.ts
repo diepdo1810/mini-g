@@ -76,3 +76,4 @@ describe('HitDetection', () => {
     expect(isHit).toBe(false);
   });
 });
+

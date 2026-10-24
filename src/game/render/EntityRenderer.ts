@@ -229,3 +229,4 @@ export class EntityRenderer {
     this.damageTexts.clear();
   }
 }
+

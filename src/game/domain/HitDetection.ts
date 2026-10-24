@@ -63,3 +63,4 @@ export function isSwordHittingMonster(
   const dist = distancePointToSegment(monsterCenter, segment.start, segment.end);
   return dist <= swordHitboxRadius + monsterRadius;
 }
+

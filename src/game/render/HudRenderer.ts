@@ -70,7 +70,7 @@ export class HudRenderer {
       .on('pointerdown', callbacks.onToggleDebug);
 
     // Status / phase hint message
-    this.messageText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 720, 'PHASE 1: Quái chạy vòng • Hero ATK1 tự đánh', {
+    this.messageText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 720, 'PHASE 2: Kéo Hero xuống đập trứng • Kiếm vẫn tự đánh', {
       fontSize: '13px',
       color: '#64748b',
       fontFamily: 'sans-serif'
@@ -150,3 +150,4 @@ export class HudRenderer {
     this.restartBtn?.destroy();
   }
 }
+

@@ -64,3 +64,4 @@ export class BoardRenderer {
     this.graphics.destroy();
   }
 }
+

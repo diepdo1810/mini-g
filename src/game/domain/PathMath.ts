@@ -48,3 +48,4 @@ export function getPositionOnPath(progress: number, rect: PathRect): Point {
     y: rect.bottom - (clamped - (2 * w + h))
   };
 }
+

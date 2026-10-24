@@ -2,13 +2,17 @@ import Phaser from 'phaser';
 import { GameEngine } from '../domain/GameEngine';
 import { BoardRenderer } from '../render/BoardRenderer';
 import { EntityRenderer } from '../render/EntityRenderer';
+import { EggRenderer } from '../render/EggRenderer';
 import { HudRenderer } from '../render/HudRenderer';
+import { DragController } from '../input/DragController';
 
 export class GameScene extends Phaser.Scene {
   private engine!: GameEngine;
   private boardRenderer!: BoardRenderer;
   private entityRenderer!: EntityRenderer;
+  private eggRenderer!: EggRenderer;
   private hudRenderer!: HudRenderer;
+  private dragController!: DragController;
   private debugMode: boolean = false;
 
   constructor() {
@@ -20,6 +24,8 @@ export class GameScene extends Phaser.Scene {
 
     this.boardRenderer = new BoardRenderer(this);
     this.entityRenderer = new EntityRenderer(this);
+    this.eggRenderer = new EggRenderer(this);
+    this.dragController = new DragController(this, this.engine);
 
     this.hudRenderer = new HudRenderer(this, {
       onTogglePause: () => this.togglePause(),
@@ -50,7 +56,9 @@ export class GameScene extends Phaser.Scene {
   private cleanup(): void {
     this.boardRenderer.destroy();
     this.entityRenderer.destroy();
+    this.eggRenderer.destroy();
     this.hudRenderer.destroy();
+    this.dragController.destroy();
   }
 
   private togglePause(): void {
@@ -65,6 +73,7 @@ export class GameScene extends Phaser.Scene {
 
   private restart(): void {
     this.engine.dispatch({ type: 'RESTART' });
+    this.dragController.cancelDrag();
     this.boardRenderer.render(this.debugMode);
   }
 
@@ -74,6 +83,8 @@ export class GameScene extends Phaser.Scene {
 
     const state = this.engine.getState();
     this.entityRenderer.render(state, this.debugMode);
+    this.eggRenderer.render(state.egg, this.debugMode);
+    this.dragController.render();
     this.hudRenderer.render(state, this.debugMode, () => this.restart());
   }
 

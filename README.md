@@ -30,3 +30,4 @@ pnpm build
 - **Phím D / Nút DBG**: Bật/tắt hiển thị hitbox kiếm và tầm quét quái.
 - **Phím P / Nút PAUSE**: Tạm dừng hoặc tiếp tục game.
 - **Phím R / Nút RESTART**: Chơi lại từ đầu.
+

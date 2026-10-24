@@ -21,6 +21,7 @@ export interface Egg {
   hp: number;
   maxHp: number;
   hatchCount: number;
+  readyToHatch: boolean;
 }
 
 export interface Point {
@@ -43,3 +44,4 @@ export interface DamageNumber {
   life: number; // seconds remaining
   maxLife: number;
 }
+

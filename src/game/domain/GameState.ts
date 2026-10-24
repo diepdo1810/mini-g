@@ -39,7 +39,8 @@ export function createInitialState(): GameState {
     egg: {
       hp: GameBalance.EGG.INITIAL_HP,
       maxHp: GameBalance.EGG.INITIAL_HP,
-      hatchCount: 0
+      hatchCount: 0,
+      readyToHatch: false
     },
     baseHp: GameBalance.BASE.INITIAL_HP,
     maxBaseHp: GameBalance.BASE.MAX_HP,
@@ -51,3 +52,4 @@ export function createInitialState(): GameState {
     damageNumbers: []
   };
 }
+

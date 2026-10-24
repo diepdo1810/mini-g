@@ -59,11 +59,19 @@ export const GameBalance = {
     HP_STEP: 2,
     CENTER_X: 225,
     CENTER_Y: 590,
-    RADIUS_X: 42,
-    RADIUS_Y: 52,
-    COLOR: 0xf59e0b
+    RADIUS_X: 45,
+    RADIUS_Y: 55,
+    TOUCH_PADDING: 12,
+    COLOR: 0xf59e0b,
+    ATTACK_COOLDOWN_MS: 250
+  },
+  DRAG: {
+    MIN_DISTANCE: 18,
+    LINE_COLOR: 0x38bdf8,
+    GHOST_ALPHA: 0.6
   },
   COMBAT: {
     MAX_DELTA_SECONDS: 0.1 // clamp lag frames
   }
 } as const;
+
