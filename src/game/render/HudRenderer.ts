@@ -1,0 +1,152 @@
+import Phaser from 'phaser';
+import type { GameState } from '../domain/GameState';
+import { GameBalance } from '../config/GameBalance';
+
+export interface HudCallbacks {
+  onTogglePause: () => void;
+  onToggleDebug: () => void;
+  onRestart: () => void;
+}
+
+export class HudRenderer {
+  private scene: Phaser.Scene;
+  private waveText: Phaser.GameObjects.Text;
+  private baseHpText: Phaser.GameObjects.Text;
+  private killsText: Phaser.GameObjects.Text;
+  private pauseBtn: Phaser.GameObjects.Text;
+  private debugBtn: Phaser.GameObjects.Text;
+  private messageText: Phaser.GameObjects.Text;
+
+  private overlayBg?: Phaser.GameObjects.Rectangle;
+  private bannerText?: Phaser.GameObjects.Text;
+  private restartBtn?: Phaser.GameObjects.Text;
+
+  constructor(scene: Phaser.Scene, callbacks: HudCallbacks) {
+    this.scene = scene;
+
+    // Header HUD
+    this.waveText = scene.add.text(24, 24, 'WAVE 1/5', {
+      fontSize: '18px',
+      fontStyle: 'bold',
+      color: '#f8fafc',
+      fontFamily: 'sans-serif'
+    });
+
+    this.baseHpText = scene.add.text(24, 52, 'Base HP: 3', {
+      fontSize: '15px',
+      color: '#ef4444',
+      fontStyle: 'bold',
+      fontFamily: 'sans-serif'
+    });
+
+    this.killsText = scene.add.text(170, 52, 'Kills: 0', {
+      fontSize: '15px',
+      color: '#94a3b8',
+      fontFamily: 'sans-serif'
+    });
+
+    // Pause button
+    this.pauseBtn = scene.add.text(350, 24, 'PAUSE', {
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      backgroundColor: '#334155',
+      padding: { left: 8, right: 8, top: 4, bottom: 4 },
+      fontFamily: 'sans-serif'
+    })
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', callbacks.onTogglePause);
+
+    // Debug toggle button
+    this.debugBtn = scene.add.text(350, 56, 'DBG: OFF', {
+      fontSize: '11px',
+      fontStyle: 'bold',
+      color: '#94a3b8',
+      backgroundColor: '#1e293b',
+      padding: { left: 6, right: 6, top: 3, bottom: 3 },
+      fontFamily: 'sans-serif'
+    })
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', callbacks.onToggleDebug);
+
+    // Status / phase hint message
+    this.messageText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 720, 'PHASE 1: Quái chạy vòng • Hero ATK1 tự đánh', {
+      fontSize: '13px',
+      color: '#64748b',
+      fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+  }
+
+  public render(state: GameState, debug: boolean, onRestart: () => void): void {
+    this.waveText.setText(`WAVE ${state.wave}/5`);
+    this.baseHpText.setText(`Base HP: ${state.baseHp}/${state.maxBaseHp}`);
+    this.killsText.setText(`Kills: ${state.kills}`);
+    this.pauseBtn.setText(state.isPaused ? 'RESUME' : 'PAUSE');
+    this.debugBtn.setText(debug ? 'DBG: ON' : 'DBG: OFF');
+    this.debugBtn.setColor(debug ? '#10b981' : '#94a3b8');
+
+    // Handle Game Over / Victory overlay
+    if (state.isGameOver || state.isVictory) {
+      if (!this.overlayBg) {
+        this.overlayBg = this.scene.add.rectangle(
+          GameBalance.SCREEN.WIDTH / 2,
+          GameBalance.SCREEN.HEIGHT / 2,
+          GameBalance.SCREEN.WIDTH,
+          GameBalance.SCREEN.HEIGHT,
+          0x000000,
+          0.75
+        );
+
+        this.bannerText = this.scene.add.text(
+          GameBalance.SCREEN.WIDTH / 2,
+          GameBalance.SCREEN.HEIGHT / 2 - 40,
+          state.isVictory ? 'VICTORY!' : 'GAME OVER',
+          {
+            fontSize: '32px',
+            fontStyle: 'bold',
+            color: state.isVictory ? '#10b981' : '#ef4444',
+            fontFamily: 'sans-serif'
+          }
+        ).setOrigin(0.5);
+
+        this.restartBtn = this.scene.add.text(
+          GameBalance.SCREEN.WIDTH / 2,
+          GameBalance.SCREEN.HEIGHT / 2 + 30,
+          'RESTART',
+          {
+            fontSize: '18px',
+            fontStyle: 'bold',
+            color: '#ffffff',
+            backgroundColor: '#2563eb',
+            padding: { left: 16, right: 16, top: 8, bottom: 8 },
+            fontFamily: 'sans-serif'
+          }
+        )
+          .setOrigin(0.5)
+          .setInteractive({ useHandCursor: true })
+          .on('pointerdown', onRestart);
+      }
+    } else {
+      if (this.overlayBg) {
+        this.overlayBg.destroy();
+        this.bannerText?.destroy();
+        this.restartBtn?.destroy();
+        this.overlayBg = undefined;
+        this.bannerText = undefined;
+        this.restartBtn = undefined;
+      }
+    }
+  }
+
+  public destroy(): void {
+    this.waveText.destroy();
+    this.baseHpText.destroy();
+    this.killsText.destroy();
+    this.pauseBtn.destroy();
+    this.debugBtn.destroy();
+    this.messageText.destroy();
+    this.overlayBg?.destroy();
+    this.bannerText?.destroy();
+    this.restartBtn?.destroy();
+  }
+}
