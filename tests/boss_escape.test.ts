@@ -20,11 +20,19 @@ function forceEscape(engine: GameEngine): void {
   engine.tick(0.01);
 }
 
+const bossCases: Array<[string, EnemySpawnConfig, number, number]> = [
+  ['Level 5', boss5, 40, 27],
+  ['Level 10', boss10, 85, 29]
+];
+
+const hpCases: Array<[number, number, boolean]> = [
+  [3, 1, false],
+  [2, 0, true],
+  [1, 0, true]
+];
+
 describe('Issue #13 - boss spawn and escape damage', () => {
-  it.each([
-    ['Level 5', boss5, 40, 27],
-    ['Level 10', boss10, 85, 29]
-  ])('%s: boss preserves type, HP, speed and escape damage at initial spawn', (_, config, hp, speed) => {
+  it.each(bossCases)('%s: boss preserves type, HP, speed and escape damage at initial spawn', (_, config, hp, speed) => {
     const engine = new GameEngine(undefined, undefined, oneEnemyLevel(config));
     const monster = engine.getState().monsters[0];
     expect(monster.type).toBe('boss');
@@ -49,11 +57,7 @@ describe('Issue #13 - boss spawn and escape damage', () => {
     expect(monsters[1].escapeDamage).toBe(2);
   });
 
-  it.each([
-    [3, 1, false],
-    [2, 0, true],
-    [1, 0, true]
-  ])('boss escape when Base HP=%i results in HP=%i, Game Over=%s', (initialHp, remainingHp, gameOver) => {
+  it.each(hpCases)('boss escape when Base HP=%i results in HP=%i, Game Over=%s', (initialHp, remainingHp, gameOver) => {
     const engine = new GameEngine(undefined, undefined, oneEnemyLevel(boss5));
     const state = engine.getState();
     state.baseHp = initialHp;
