@@ -85,7 +85,7 @@ pnpm preview
 
 ## 4. Cân bằng thông số (GameBalance.ts)
 
-Toàn bộ thông số game được tập trung tại [src/game/config/GameBalance.ts](file:///home/diepdp/Downloads/linh_tinh/mini-g/src/game/config/GameBalance.ts):
+Toàn bộ thông số game được tập trung tại [src/game/config/GameBalance.ts](src/game/config/GameBalance.ts):
 - `SCREEN`: Kích thước logic `450×800` (tỷ lệ 9:16).
 - `BOARD`: Lưới 5×5, kích thước mỗi ô 56px.
 - `PATH`: Đường quái chạy cách mép bàn cờ 20px.
@@ -99,3 +99,13 @@ Toàn bộ thông số game được tập trung tại [src/game/config/GameBala
 - Không dùng ảnh sprite, animation art phức tạp.
 - Không kết nối server backend, cơ sở dữ liệu hoặc đồng bộ mạng.
 - Không có tiền tệ, cửa hàng, tài khoản người dùng hoặc tính năng trực tuyến.
+
+
+---
+
+## 6. Quy trình GitHub và CI
+
+- [Hướng dẫn cho coding agent](AGENTS.md) và [GitHub workflow](docs/DEV_WORKFLOW.md).
+- Mỗi GitHub Issue có branch và Pull Request riêng vào `master`.
+- GitHub Actions tự chạy `pnpm typecheck`, `pnpm test`, `pnpm build` trên PR và khi push lên `master`.
+- PR chỉ merge sau khi CI xanh và chủ dự án duyệt. Không tự đóng issue khi chưa nghiệm thu.
