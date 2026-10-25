@@ -15,6 +15,8 @@ export interface Monster {
   maxHp: number;
   progress: number; // distance traveled in px on perimeter
   speed: number; // px/s
+  type?: 'normal' | 'boss'; // optional only for legacy fixtures; every configured spawn sets it
+  escapeDamage?: number; // Base HP lost if the monster completes one lap
 }
 
 export type EggStatus = 'active' | 'pending';

@@ -46,7 +46,10 @@ export const GameBalance = {
   },
   MONSTER: {
     RADIUS: 16,
+    BOSS_RADIUS: 24,
     COLOR: 0xef4444, // Red
+    BOSS_COLOR: 0x7c3aed, // Purple
+    BOSS_BORDER: 0xfbbf24, // Gold
     INITIAL_WAVE_SPEED: 32,
     INITIAL_HP: 3
   },
