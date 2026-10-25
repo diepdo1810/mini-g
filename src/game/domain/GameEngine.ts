@@ -97,7 +97,9 @@ export class GameEngine {
           hp: firstEnemy.hp,
           maxHp: firstEnemy.hp,
           progress: 0,
-          speed: firstEnemy.speed
+          speed: firstEnemy.speed,
+          type: firstEnemy.type,
+          escapeDamage: firstEnemy.escapeDamage
         });
         this.enemySpawnIndex = 1;
         this.spawnTimer = firstWave.spawnIntervalMs / 1000;
@@ -155,7 +157,9 @@ export class GameEngine {
         hp: firstEnemy.hp,
         maxHp: firstEnemy.hp,
         progress: 0,
-        speed: firstEnemy.speed
+        speed: firstEnemy.speed,
+        type: firstEnemy.type,
+        escapeDamage: firstEnemy.escapeDamage
       });
       this.enemySpawnIndex = 1;
       this.spawnTimer = firstWave.spawnIntervalMs / 1000;
@@ -536,7 +540,9 @@ export class GameEngine {
           hp: enemyConfig.hp,
           maxHp: enemyConfig.hp,
           progress: 0,
-          speed: enemyConfig.speed
+          speed: enemyConfig.speed,
+          type: enemyConfig.type,
+          escapeDamage: enemyConfig.escapeDamage
         });
         this.enemySpawnIndex += 1;
         this.spawnTimer = currentWave.spawnIntervalMs / 1000;
@@ -575,7 +581,7 @@ export class GameEngine {
             GameBalance.SWORD.LENGTH,
             GameBalance.SWORD.HITBOX_RADIUS,
             monsterPos,
-            GameBalance.MONSTER.RADIUS
+            monster.type === 'boss' ? GameBalance.MONSTER.BOSS_RADIUS : GameBalance.MONSTER.RADIUS
           );
 
           if (hit) {
@@ -634,7 +640,7 @@ export class GameEngine {
 
       if (monster.progress >= perimeter) {
         monstersToRemove.add(monster.id);
-        this.state.baseHp = Math.max(0, this.state.baseHp - 1);
+        this.state.baseHp = Math.max(0, this.state.baseHp - (monster.escapeDamage ?? 1));
 
         if (this.state.baseHp <= 0) {
           this.state.isGameOver = true;

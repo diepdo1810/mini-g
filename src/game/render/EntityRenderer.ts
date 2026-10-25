@@ -144,13 +144,14 @@ export class EntityRenderer {
     for (const monster of monsters) {
       activeIds.add(monster.id);
       const pos = getPositionOnPath(monster.progress, GameBalance.PATH.RECT);
-      const radius = GameBalance.MONSTER.RADIUS;
+      const isBoss = monster.type === 'boss';
+      const radius = isBoss ? GameBalance.MONSTER.BOSS_RADIUS : GameBalance.MONSTER.RADIUS;
 
-      // Draw Monster Circle
-      this.graphics.fillStyle(GameBalance.MONSTER.COLOR, 1.0);
+      // Draw Monster Circle (boss: larger purple circle with gold outline)
+      this.graphics.fillStyle(isBoss ? GameBalance.MONSTER.BOSS_COLOR : GameBalance.MONSTER.COLOR, 1.0);
       this.graphics.fillCircle(pos.x, pos.y, radius);
 
-      this.graphics.lineStyle(2, 0xffffff, 0.9);
+      this.graphics.lineStyle(isBoss ? 3 : 2, isBoss ? GameBalance.MONSTER.BOSS_BORDER : 0xffffff, 0.9);
       this.graphics.strokeCircle(pos.x, pos.y, radius);
 
       // Monster HP text inside circle
@@ -165,7 +166,7 @@ export class EntityRenderer {
         this.monsterTexts.set(monster.id, text);
       }
       text.setPosition(pos.x, pos.y);
-      text.setText(`${monster.hp}`);
+      text.setText(isBoss ? `B ${monster.hp}` : `${monster.hp}`);
       text.setVisible(true);
 
       // Debug monster hitbox
