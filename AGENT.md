@@ -18,7 +18,7 @@ Build a small offline-first, portrait (9:16) mobile-friendly 2D game combining *
 Before coding, read:
 1. This `AGENT.md` (and the `AGENTS.md` discovery file).
 2. The **assigned GitHub Issue** (title, full body, comments, dependencies, acceptance criteria).
-3. `docs/ANTIGRAVITY_GITHUB_WORKFLOW.md`, if present.
+3. `docs/DEV_WORKFLOW.md` (GitHub collaboration & CI); also read `docs/ANTIGRAVITY_GITHUB_WORKFLOW.md` if present.
 4. Referenced specifications relevant to that issue, if present:
    - `docs/GAME_PLAN.md`: original gameplay/architecture.
    - `docs/PHASE3_FEEDBACK_EGG_COMBAT.md`: egg/combat collision feedback.
@@ -54,18 +54,18 @@ These are guardrails, not authorization to implement future phase features durin
 - Repository initially empty; connect `origin` to `https://github.com/diepdo1810/mini-g.git` carefully.
 - Add relevant docs and these instruction files at repository root; preserve project history if it exists.
 - Check for secrets before first commit. Never commit tokens, `.env`, credentials, generated artifacts or `node_modules`.
-- Bootstrap initial `main` only if repository truly empty and safe to do so; no force push, history rewrite or destructive reset.
+- Bootstrap initial `master` only if repository truly empty and safe to do so; no force push, history rewrite or destructive reset.
 - Add README and CI only if within Issue #1 scope; run available verification scripts.
 - Stop after Issue #1. Report commit SHA, pushed branch and checks. Do not begin Issue #2.
 
 ### Every issue after #1
 
 1. Confirm correct repository and clean working tree. Read issue and linked docs; check dependency issues are accepted/closed before proceeding.
-2. Create branch from updated `main`: `fix/<number>-short-slug`, `feat/<number>-short-slug` or `chore/<number>-short-slug`.
+2. Create branch from updated `master`: `fix/<number>-short-slug`, `feat/<number>-short-slug` or `chore/<number>-short-slug`.
 3. Implement only assigned acceptance criteria; update relevant unit tests and docs. Prefer config-driven levels/waves, explicit IDs and injectable random sources.
 4. Run **existing scripts** from `package.json` (typically `pnpm typecheck`, `pnpm test`, `pnpm build`). Do not claim a missing script passed. Manually test affected drag/collision/rendering paths in a real browser when relevant.
 5. Review `git diff`, check no unrelated files or secrets, then commit mentioning `#<number>`; push branch.
-6. Open PR targeting `main`. Include `Closes #<number>` only when all required criteria are addressed; summarize behavior, proof of tests, manual steps/screenshots and unresolved issues.
+6. Open PR targeting `master`. CI runs automatically on the PR; don't claim PASS until check status confirms. Include `Closes #<number>` only when all required criteria are addressed; summarize behavior, proof of tests, manual steps/screenshots and unresolved issues.
 7. **Do not self-merge, close the issue or start another issue.** Wait for owner acceptance. If blocked, leave an issue comment describing evidence and needed decision.
 
 Never run `git push --force`, `git reset --hard`, destructive cleanup, or remove user files without explicit approval.
@@ -87,7 +87,7 @@ STATUS: READY_FOR_REVIEW | BLOCKED | FAILED
 BRANCH: <branch>
 COMMIT: <SHA>
 PR: <URL or not created>
-CHANGED: <main files>
+CHANGED: <master files>
 IMPLEMENTED: <short list>
 CHECKS: typecheck <PASS/FAIL/NOT_AVAILABLE>; test <PASS/FAIL/NOT_AVAILABLE> (<count>); build <PASS/FAIL/NOT_AVAILABLE>
 MANUAL: <what actually tested + result>
