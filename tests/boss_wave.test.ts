@@ -52,6 +52,24 @@ describe('Phase 7 - Boss wave lifecycle and escape regression', () => {
     expect(state.isGameOver).toBe(false);
   });
 
+  it('final Boss can escape and level still wins with one remaining Base HP', () => {
+    const boss = getLevelConfig(5).waves[4].enemies[2];
+    const oneWave: LevelConfig = {
+      ...getLevelConfig(5),
+      waves: [{ spawnIntervalMs: 2500, enemies: [boss] }]
+    };
+    const engine = new GameEngine(undefined, undefined, oneWave);
+    const state = engine.getState();
+    state.monsters[0].progress = engine.getPathPerimeter() - 0.01;
+
+    engine.tick(0.01);
+    expect(state.baseHp).toBe(1);
+    expect(state.kills).toBe(0);
+    expect(state.monsters).toHaveLength(0);
+    expect(state.isGameOver).toBe(false);
+    expect(state.isVictory).toBe(true);
+  });
+
   it('simultaneous normal and boss escape clamps Base HP, does not award kills or victory', () => {
     const boss = getLevelConfig(5).waves[4].enemies[2];
     const normal = getLevelConfig(5).waves[4].enemies[0];
