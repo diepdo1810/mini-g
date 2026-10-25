@@ -166,7 +166,7 @@ export class EntityRenderer {
         this.monsterTexts.set(monster.id, text);
       }
       text.setPosition(pos.x, pos.y);
-      text.setText(isBoss ? `B ${monster.hp}` : `${monster.hp}`);
+      text.setText(isBoss ? `BOSS\n${monster.hp}` : `${monster.hp}`);
       text.setVisible(true);
 
       // Debug monster hitbox
