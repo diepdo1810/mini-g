@@ -1,5 +1,5 @@
 import type { CampaignProgress } from '../config/levels';
-import { type ProgressRepository, createDefaultProgress } from './ProgressRepository';
+import { type ProgressRepository, createDefaultProgress, sanitizeCampaignProgress } from './ProgressRepository';
 
 const DB_NAME = 'MergeDefenseDB';
 const DB_VERSION = 1;
@@ -51,19 +51,7 @@ export class IndexedDbProgress implements ProgressRepository {
         const req = store.get(RECORD_KEY);
 
         req.onsuccess = () => {
-          const val = req.result;
-          if (val && typeof val === 'object' && val.schemaVersion === 1) {
-            // Validate & sanitize
-            const highest = Math.max(1, Math.min(10, Number(val.highestUnlockedLevel) || 1));
-            const results = (val.results && typeof val.results === 'object') ? val.results : {};
-            resolve({
-              schemaVersion: 1,
-              highestUnlockedLevel: highest,
-              results
-            });
-          } else {
-            resolve(createDefaultProgress());
-          }
+          resolve(sanitizeCampaignProgress(req.result));
         };
 
         req.onerror = () => {
