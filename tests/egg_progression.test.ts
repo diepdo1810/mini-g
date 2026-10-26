@@ -200,7 +200,9 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero.id, eggId: state.eggs[1].id });
     }
-    expect(engine.claimHatchReward()).toBe(true);
+    expect(state.hatchQueue).toHaveLength(1);
+    expect(state.eggs[1].status).toBe('active');
+    expect(state.heroes).toHaveLength(1);
 
     expect(state.eggs[1].hatchCount).toBe(1);
     // Base 5 + 2 * 1 = 7 HP
@@ -302,91 +304,58 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
     expect(egg.hp).toBe(initialHp - 1);
   });
 
-  // E13: 2 trứng cùng chạm 0 HP
-  it('E13: 2 trứng cùng chạm 0 HP spawn đúng 2 reward không trùng lặp', () => {
+  // E13: simultaneous egg breaks create distinct queued rewards
+  it('E13: 2 trứng cùng vỡ -> 2 phần thưởng ấp tuần tự, không mất/trùng Hero', () => {
     const engine = new GameEngine(undefined, mockRandom, getLevelConfig(2));
     const state = engine.getState();
     const hero = state.heroes[0];
-
-    // Reduce both eggs to 1 HP
     state.eggs[0].hp = 1;
     state.eggs[1].hp = 1;
 
     engine.applyEggDamage(hero, state.eggs[0].id, 'drag');
-    expect(engine.claimHatchReward()).toBe(true);
-
-    // Advance tick past cooldown
-    for (let t = 0; t < 26; t++) engine.tick(0.1);
     engine.applyEggDamage(hero, state.eggs[1].id, 'drag');
-    expect(engine.claimHatchReward()).toBe(true);
+    expect(state.hatchQueue).toHaveLength(2);
+    expect(new Set(state.hatchQueue.map((q) => q.id)).size).toBe(2);
+    expect(state.eggs.map((e) => e.status)).toEqual(['active', 'active']);
+    expect(state.eggs.map((e) => e.hp)).toEqual([5, 5]);
 
-    expect(state.heroes.length).toBe(3); // Initial 1 + 2 hatched
-    const ids = new Set(state.heroes.map((h) => h.id));
-    expect(ids.size).toBe(3); // All IDs unique
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
+    expect(state.heroes).toHaveLength(2);
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
+    expect(state.heroes).toHaveLength(3);
+    expect(state.hatchQueue).toHaveLength(0);
+    expect(new Set(state.heroes.map((h) => h.id)).size).toBe(3);
   });
 
-  // E14: Board 25 ô đầy, 2 trứng vỡ
-  it('E14: Bàn cờ đầy 25 ô, 2 trứng vỡ giữ pending cố định; sau 2 merge nhận đúng 2 hero', () => {
+  // E14: full board retains ready rewards; one empty cell is reserved.
+  it('E14: Bàn 25 ô đầy: giữ queue, cần 2 lần ghép để dành 1 ô trống', () => {
     const engine = new GameEngine(undefined, mockRandom, getLevelConfig(2));
     const state = engine.getState();
-
-    // Fill all 25 cells with Kind A tier 0 heroes
     state.heroes = [];
-    for (let r = 0; r < 5; r++) {
-      for (let c = 0; c < 5; c++) {
-        state.heroes.push({
-          id: `hero-${r}-${c}`,
-          kind: 'A',
-          row: r,
-          col: c,
-          tier: 0,
-          angle: 0
-        });
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
+        state.heroes.push({ id: `hero-${row}-${col}`, kind: 'A', row, col, tier: 0, angle: 0 });
       }
     }
-    expect(state.heroes.length).toBe(25);
-    expect(engine.getEmptyCells().length).toBe(0);
-
-    // Break egg 1
     state.eggs[0].hp = 1;
-    engine.applyEggDamage(state.heroes[0], state.eggs[0].id, 'drag');
-    expect(state.eggs[0].status).toBe('pending');
-    expect(state.eggs[0].pendingHero).not.toBeNull();
-    const pendingHero1 = state.eggs[0].pendingHero!;
-    expect(pendingHero1).toBeDefined();
-
-    for (let t = 0; t < 4; t++) engine.tick(0.1);
-
-    // Break egg 2
     state.eggs[1].hp = 1;
+    engine.applyEggDamage(state.heroes[0], state.eggs[0].id, 'drag');
     engine.applyEggDamage(state.heroes[0], state.eggs[1].id, 'drag');
-    expect(state.eggs[1].status).toBe('pending');
-    expect(state.eggs[1].pendingHero).not.toBeNull();
-    const pendingHero2 = state.eggs[1].pendingHero!;
-    expect(pendingHero2).toBeDefined();
+    for (let t = 0; t < 30; t++) engine.tick(0.1);
 
-    // Board still full: no heroes spawned yet
-    expect(state.heroes.length).toBe(25);
+    expect(state.heroes).toHaveLength(25);
+    expect(state.hatchQueue).toHaveLength(2);
+    expect(state.hatchQueue[0].remainingSeconds).toBe(0);
 
-    // Merge 1: merges hero-0-0 and hero-0-1 -> frees 1 cell!
     engine.dispatch({ type: 'MERGE_HERO', sourceId: 'hero-0-0', targetId: 'hero-0-1' });
-
-    // Claim first pending egg into freed cell!
-    expect(engine.claimHatchReward()).toBe(true);
-    expect(state.eggs[0].status).toBe('active');
-    expect(state.eggs[1].status).toBe('pending'); // egg 2 still pending
-    expect(state.heroes.length).toBe(25);
-
-    // Advance cooldown
-    for (let t = 0; t < 26; t++) engine.tick(0.1);
-
-    // Merge 2: merges hero-1-0 and hero-1-1 -> frees another cell!
+    for (let t = 0; t < 10; t++) engine.tick(0.1);
+    expect(state.heroes).toHaveLength(24);
     engine.dispatch({ type: 'MERGE_HERO', sourceId: 'hero-1-0', targetId: 'hero-1-1' });
+    for (let t = 0; t < 7; t++) engine.tick(0.1);
 
-    // Claim second pending egg into second freed cell!
-    expect(engine.claimHatchReward()).toBe(true);
-    expect(state.eggs[1].status).toBe('active');
-    expect(state.heroes.length).toBe(25);
+    expect(state.heroes).toHaveLength(24);
+    expect(state.hatchQueue).toHaveLength(1);
+    expect(state.eggs.map((egg) => egg.status)).toEqual(['active', 'active']);
   });
 
   // E15: Roll cấp 1/2/3 với mock RNG
