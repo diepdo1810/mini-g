@@ -132,6 +132,8 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
   // E05: Hoàn thành Boss 5 giữa trận
   it('E05: Hoàn thành Boss 5 không đổi trứng trận đang chạy, chỉ mở cấp 2 cho các trận tiếp theo', async () => {
     const repo = new InMemoryRepo();
+    // Boss 5 must be unlocked before a legitimate victory can be recorded.
+    repo.progress.highestUnlockedLevel = 5;
     const campaign = new CampaignController(repo);
     await campaign.init();
 
@@ -543,6 +545,8 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
   // E21: Replay boss nhiều lần không tăng thêm cấp
   it('E21: Thắng lại Boss 5 nhiều lần không nhân đôi số trứng hoặc tăng cấp vượt mốc', async () => {
     const repo = new InMemoryRepo();
+    // Boss 5 must be unlocked before a legitimate victory can be recorded.
+    repo.progress.highestUnlockedLevel = 5;
     const campaign = new CampaignController(repo);
     await campaign.init();
 

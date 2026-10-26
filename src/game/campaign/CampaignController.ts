@@ -59,6 +59,17 @@ export class CampaignController {
       await this.init();
     }
 
+    // Ignore results for locked/out-of-range levels. The map normally prevents
+    // launching them, but progression must also enforce this invariant.
+    if (!this.canPlayLevel(levelId)) {
+      return {
+        victory: false,
+        stars: 0,
+        unlockedNext: false,
+        highestUnlockedLevel: this.progress.highestUnlockedLevel
+      };
+    }
+
     const victory = baseHp > 0;
     const stars = this.calculateStars(baseHp);
 
