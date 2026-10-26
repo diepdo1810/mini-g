@@ -8,8 +8,6 @@ export interface HudCallbacks {
   onRestart: () => void;
   onGoToMap: () => void;
   onNextLevel?: () => void;
-  onClaimHero?: () => void;
-  onToggleAutoReceive?: () => void;
 }
 
 export class HudRenderer {
@@ -29,12 +27,9 @@ export class HudRenderer {
   private queueTitleText: Phaser.GameObjects.Text;
   private queueBadgeTexts: Phaser.GameObjects.Text[] = [];
   private queueOverflowText: Phaser.GameObjects.Text;
-  private claimHeroBtn: Phaser.GameObjects.Text;
-  private autoReceiveBtn: Phaser.GameObjects.Text;
+  private queueStatusText: Phaser.GameObjects.Text;
   private mapTouchTarget: Phaser.GameObjects.Rectangle;
   private pauseTouchTarget: Phaser.GameObjects.Rectangle;
-  private claimTouchTarget: Phaser.GameObjects.Rectangle;
-  private autoTouchTarget: Phaser.GameObjects.Rectangle;
 
   private overlayBg?: Phaser.GameObjects.Rectangle;
   private bannerText?: Phaser.GameObjects.Text;
@@ -165,27 +160,11 @@ export class HudRenderer {
     });
     this.queueOverflowText.setVisible(false);
 
-    // Claim Hero Button
-    this.claimHeroBtn = scene.add.text(320, 655, 'NHẬN HERO', {
+    this.queueStatusText = scene.add.text(20, 705, 'ĐẬP TRỨNG → TỰ ẤP HERO', {
       fontSize: '13px',
-      fontStyle: 'bold',
-      color: '#ffffff',
-      backgroundColor: '#16a34a',
-      padding: { left: 14, right: 14, top: 8, bottom: 8 },
+      color: '#a7f3d0',
       fontFamily: 'sans-serif'
-    })
-      .setOrigin(0.5, 0);
-
-    // Auto Receive Toggle Button
-    this.autoReceiveBtn = scene.add.text(320, 727, 'TỰ ĐỘNG: TẮT', {
-      fontSize: '12px',
-      fontStyle: 'bold',
-      color: '#cbd5e1',
-      backgroundColor: '#334155',
-      padding: { left: 12, right: 12, top: 6, bottom: 6 },
-      fontFamily: 'sans-serif'
-    })
-      .setOrigin(0.5, 0);
+    });
 
     // Transparent hit areas are independent from font/label size.
     // All interactive buttons meet 44 CSS px height at 360x640 in Phaser FIT.
@@ -200,16 +179,7 @@ export class HudRenderer {
         .on('pointerdown', callback);
     this.mapTouchTarget = createTouchTarget(hit.MAP, callbacks.onGoToMap);
     this.pauseTouchTarget = createTouchTarget(hit.PAUSE, callbacks.onTogglePause);
-    this.claimTouchTarget = createTouchTarget(hit.CLAIM, () => {
-      if (this.canClaimHero) this.callbacks.onClaimHero?.();
-    });
-    this.autoTouchTarget = createTouchTarget(hit.AUTO, () => {
-      if (this.canToggleAuto) this.callbacks.onToggleAutoReceive?.();
-    });
   }
-
-  private canClaimHero = false;
-  private canToggleAuto = true;
 
   public render(state: GameState, debug: boolean, onRestart: () => void): void {
     this.levelText.setText(`LVL ${state.currentLevelId}`);
@@ -239,76 +209,45 @@ export class HudRenderer {
       this.interWaveBanner.setVisible(false);
     }
 
-    // Hatch Queue HUD
-    const queue = state.hatchQueue ?? [];
-    this.queueTitleText.setText(`HÀNG CHỜ: (${queue.length})`);
+    // FIFO incubation: reveal identity only when first reward finishes hatching.
+    const queue = state.hatchQueue;
+    this.queueTitleText.setText(`ĐANG ẤP: (${queue.length})`);
 
-    // Render up to 3 queue items
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < this.queueBadgeTexts.length; i++) {
       const badge = this.queueBadgeTexts[i];
-      if (i < queue.length) {
-        const item = queue[i];
-        badge.setText(`${item.reward.kind}${2 ** item.reward.heroTier}`);
-        if (item.reward.kind === 'A') {
-          badge.setBackgroundColor('#1e3a8a');
-          badge.setColor('#38bdf8');
-        } else {
-          badge.setBackgroundColor('#064e3b');
-          badge.setColor('#34d399');
-        }
-        badge.setVisible(true);
-      } else {
+      const item = queue[i];
+      if (!item) {
         badge.setVisible(false);
+        continue;
       }
+      const ready = i === 0 && item.remainingSeconds <= 0;
+      const incubating = i === 0 && item.remainingSeconds > 0;
+      badge.setText(ready
+        ? `${item.reward.kind}${2 ** item.reward.heroTier}`
+        : incubating ? `${item.remainingSeconds.toFixed(1)}s` : '...'
+      );
+      badge.setBackgroundColor(ready ? '#064e3b' : '#334155');
+      badge.setColor(ready ? '#6ee7b7' : '#f8fafc');
+      badge.setVisible(true);
     }
 
-    // Overflow badge (+N)
-    if (queue.length > 3) {
-      this.queueOverflowText.setText(`+${queue.length - 3}`);
-      this.queueOverflowText.setVisible(true);
-    } else {
-      this.queueOverflowText.setVisible(false);
-    }
+    const overflow = Math.max(0, queue.length - this.queueBadgeTexts.length);
+    this.queueOverflowText.setVisible(overflow > 0);
+    if (overflow > 0) this.queueOverflowText.setText(`+${overflow}`);
 
-    // Claim Hero Button state
-    const isCooldown = state.hatchCooldownRemaining > 0;
-    const isQueueEmpty = queue.length === 0;
-    const isBoardFull = state.heroes.length >= 25;
-    const isBlocked = state.isPaused || state.isGameOver || state.isVictory;
-    this.canClaimHero = !isBlocked && !isCooldown && !isQueueEmpty && !isBoardFull;
-    this.canToggleAuto = !isBlocked;
-
-    if (isBlocked) {
-      this.claimHeroBtn.setText('NHẬN HERO');
-      this.claimHeroBtn.setBackgroundColor('#1e293b');
-      this.claimHeroBtn.setColor('#475569');
-    } else if (isCooldown) {
-      this.claimHeroBtn.setText(`NHẬN (${state.hatchCooldownRemaining.toFixed(1)}s)`);
-      this.claimHeroBtn.setBackgroundColor('#334155');
-      this.claimHeroBtn.setColor('#94a3b8');
-    } else if (isBoardFull) {
-      this.claimHeroBtn.setText('BÀN ĐẦY');
-      this.claimHeroBtn.setBackgroundColor('#78350f');
-      this.claimHeroBtn.setColor('#fde68a');
-    } else if (isQueueEmpty) {
-      this.claimHeroBtn.setText('NHẬN HERO');
-      this.claimHeroBtn.setBackgroundColor('#1e293b');
-      this.claimHeroBtn.setColor('#64748b');
+    const front = queue[0];
+    if (!front) {
+      this.queueStatusText.setText('ĐẬP TRỨNG → TỰ ẤP HERO');
+      this.queueStatusText.setColor('#a7f3d0');
+    } else if (front.remainingSeconds > 0) {
+      this.queueStatusText.setText(`TRỨNG ĐANG ẤP: ${front.remainingSeconds.toFixed(1)}s`);
+      this.queueStatusText.setColor('#facc15');
+    } else if (state.heroes.length >= GameBalance.BOARD.ROWS * GameBalance.BOARD.COLS - GameBalance.HATCH.RESERVED_EMPTY_CELLS) {
+      this.queueStatusText.setText('HERO CHỜ — GHÉP ĐỂ TẠO CHỖ');
+      this.queueStatusText.setColor('#fbbf24');
     } else {
-      this.claimHeroBtn.setText('NHẬN HERO');
-      this.claimHeroBtn.setBackgroundColor('#16a34a');
-      this.claimHeroBtn.setColor('#ffffff');
-    }
-
-    // Auto Receive Button state
-    if (state.autoReceiveHatch) {
-      this.autoReceiveBtn.setText('TỰ ĐỘNG: BẬT');
-      this.autoReceiveBtn.setBackgroundColor('#059669');
-      this.autoReceiveBtn.setColor('#ecfdf5');
-    } else {
-      this.autoReceiveBtn.setText('TỰ ĐỘNG: TẮT');
-      this.autoReceiveBtn.setBackgroundColor('#334155');
-      this.autoReceiveBtn.setColor('#cbd5e1');
+      this.queueStatusText.setText('HERO ĐÃ NỞ — SẮP TRIỂN KHAI');
+      this.queueStatusText.setColor('#a7f3d0');
     }
 
     // Handle Game Over / Victory overlay
@@ -486,12 +425,9 @@ export class HudRenderer {
     this.queueTitleText.destroy();
     for (const b of this.queueBadgeTexts) b.destroy();
     this.queueOverflowText.destroy();
-    this.claimHeroBtn.destroy();
-    this.autoReceiveBtn.destroy();
+    this.queueStatusText.destroy();
     this.mapTouchTarget.destroy();
     this.pauseTouchTarget.destroy();
-    this.claimTouchTarget.destroy();
-    this.autoTouchTarget.destroy();
     this.clearOverlay();
   }
 }

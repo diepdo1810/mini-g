@@ -27,9 +27,11 @@ export interface HatchReward {
 }
 
 export interface QueuedHatchReward {
+  id: string; // Each break gets a unique immutable reward, including repeat breaks of one egg.
   eggId: string;
   slotIndex: number;
   reward: HatchReward;
+  remainingSeconds: number; // Incubates while first in FIFO; <= 0 means READY.
 }
 
 export interface Egg {

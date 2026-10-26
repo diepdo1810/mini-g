@@ -3,7 +3,7 @@ import { GameBalance } from '../src/game/config/GameBalance';
 import { calculateEggPositions } from '../src/game/domain/EggProgression';
 
 describe('Issue #25 - Mobile 9:16 Viewport & Layout Audit', () => {
-  it('checks actual HUD hit-area configuration for MAP, PAUSE, CLAIM and AUTO', () => {
+  it('checks actual HUD hit-area configuration for MAP and PAUSE', () => {
     const hud = GameBalance.HUD;
     const hit = hud.TOUCH_TARGETS;
     for (const [width, height] of [[360, 640], [412, 915]]) {
@@ -20,11 +20,7 @@ describe('Issue #25 - Mobile 9:16 Viewport & Layout Audit', () => {
         expect(button.y + hud.MIN_TOUCH_TARGET_PX / 2).toBeLessThanOrEqual(GameBalance.SCREEN.HEIGHT);
       }
     }
-    // Queue/claim and auto buttons must not overlap.
-    const claim = hit.CLAIM;
-    const auto = hit.AUTO;
-    expect(claim.y + hud.MIN_TOUCH_TARGET_PX / 2)
-      .toBeLessThanOrEqual(auto.y - hud.MIN_TOUCH_TARGET_PX / 2);
+
   });
 
   it('ensures board, outer path, eggs, and bottom queue HUD do not overlap vertically', () => {

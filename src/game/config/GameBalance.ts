@@ -82,8 +82,9 @@ export const GameBalance = {
     ORBIT_COOLDOWN_MS: 500
   },
   HATCH: {
-    MIN_INTERVAL: 2.5,
-    DEFAULT_AUTO_RECEIVE: false,
+    INCUBATION_SECONDS: 2.5,
+    MERGE_GRACE_SECONDS: 0.6,
+    RESERVED_EMPTY_CELLS: 1,
     MAX_VISIBLE_QUEUE: 3
   },
   HUD: {
@@ -91,9 +92,7 @@ export const GameBalance = {
     MIN_TOUCH_TARGET_PX: 56,
     TOUCH_TARGETS: {
       MAP: { x: 51, y: 30, width: 76 },
-      PAUSE: { x: 396, y: 30, width: 90 },
-      CLAIM: { x: 320, y: 672, width: 160 },
-      AUTO: { x: 320, y: 742, width: 170 }
+      PAUSE: { x: 396, y: 30, width: 90 }
     }
   },
   DRAG: {
