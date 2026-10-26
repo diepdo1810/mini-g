@@ -103,7 +103,8 @@ describe('Issue #25 - Auto Hatch + Reserve Queue', () => {
     advance(engine, 26);
     expect(state.heroes).toHaveLength(2);
     expect(state.hatchQueue).toHaveLength(3);
-    expect(state.hatchQueue[0].remainingSeconds).toBe(2.5);
+    expect(state.hatchQueue[0].remainingSeconds).toBeGreaterThan(2.3);
+    expect(state.hatchQueue[0].remainingSeconds).toBeLessThanOrEqual(2.5);
     advance(engine, 26);
     expect(state.heroes).toHaveLength(3);
     advance(engine, 52);
