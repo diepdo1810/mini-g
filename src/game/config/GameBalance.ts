@@ -60,7 +60,7 @@ export const GameBalance = {
   WAVES: {
     TOTAL: 5,
     SPAWN_INTERVAL: 2.5,
-    INTER_WAVE_DELAY: 2.0,
+    INTER_WAVE_DELAY: 4.0,
     CONFIGS: [
       { monsterCount: 1, monsterHp: 3, monsterSpeed: 32 },
       { monsterCount: 2, monsterHp: 4, monsterSpeed: 34 },
@@ -80,6 +80,21 @@ export const GameBalance = {
     COLOR: 0xf59e0b,
     DRAG_COOLDOWN_MS: 250,
     ORBIT_COOLDOWN_MS: 500
+  },
+  HATCH: {
+    MIN_INTERVAL: 2.5,
+    DEFAULT_AUTO_RECEIVE: false,
+    MAX_VISIBLE_QUEUE: 3
+  },
+  HUD: {
+    // Phaser FIT scales 450 game px to 360 CSS px (0.8x): 56px -> 44.8 CSS px.
+    MIN_TOUCH_TARGET_PX: 56,
+    TOUCH_TARGETS: {
+      MAP: { x: 51, y: 30, width: 76 },
+      PAUSE: { x: 396, y: 30, width: 90 },
+      CLAIM: { x: 320, y: 672, width: 160 },
+      AUTO: { x: 320, y: 742, width: 170 }
+    }
   },
   DRAG: {
     MIN_DISTANCE: 18,

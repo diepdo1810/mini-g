@@ -78,8 +78,8 @@ describe('Phase 5 QA & Playtest Verification', () => {
 
     // Resume
     engine.dispatch({ type: 'RESUME' });
-    // After 2.1s of active play, wave 2 begins
-    for (let i = 0; i < 21; i++) {
+    // After 4.1s of active play, wave 2 begins
+    for (let i = 0; i < 41; i++) {
       engine.tick(0.1);
     }
     expect(state.wave).toBe(2);
@@ -167,6 +167,7 @@ describe('Phase 5 QA & Playtest Verification', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
+    engine.dispatch({ type: 'CLAIM_HERO' });
     expect(s.heroes.length).toBe(2);
 
     // Merge hero1 and hero2 when needed or hatch more heroes

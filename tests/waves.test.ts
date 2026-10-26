@@ -65,17 +65,17 @@ describe('Phase 4 - Wave Scheduler & Win/Loss Loop', () => {
     expect(freshState.wave).toBe(1);
   });
 
-  it('Wave Transition: Sau khi quái Wave 1 chết, đợi 2s rồi chuyển sang Wave 2 và spawn quái mới', () => {
+  it('Wave Transition: Sau khi quái Wave 1 chết, đợi 4s rồi chuyển sang Wave 2 và spawn quái mới', () => {
     const state = engine.getState();
     // Kill wave 1 monster
     state.monsters = [];
 
-    // Advance 1s: still in inter-wave delay
-    for (let i = 0; i < 10; i++) engine.tick(0.1);
+    // Advance 2s: still in inter-wave delay (4s total)
+    for (let i = 0; i < 20; i++) engine.tick(0.1);
     expect(state.wave).toBe(1);
 
-    // Advance 1.1s more (total 2.1s > 2.0s delay): wave 2 begins!
-    for (let i = 0; i < 11; i++) engine.tick(0.1);
+    // Advance 2.1s more (total 4.1s > 4.0s delay): wave 2 begins!
+    for (let i = 0; i < 21; i++) engine.tick(0.1);
     expect(state.wave).toBe(2);
 
     // Wait 0.5s for initial wave 2 monster spawn

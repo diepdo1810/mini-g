@@ -48,7 +48,7 @@ export class GameEngine {
   // Wave Scheduler State
   private enemySpawnIndex = 0;
   private spawnTimer = 2.5;
-  private interWaveTimer = 2.0;
+  private interWaveTimer = GameBalance.WAVES.INTER_WAVE_DELAY;
 
   constructor(
     initialState?: GameState,
@@ -62,6 +62,15 @@ export class GameEngine {
 
     if (initialState) {
       this.state = initialState;
+      if (!this.state.hatchQueue) {
+        this.state.hatchQueue = [];
+      }
+      if (this.state.autoReceiveHatch === undefined) {
+        this.state.autoReceiveHatch = GameBalance.HATCH.DEFAULT_AUTO_RECEIVE;
+      }
+      if (this.state.hatchCooldownRemaining === undefined) {
+        this.state.hatchCooldownRemaining = 0;
+      }
       if (!this.state.eggs || this.state.eggs.length === 0) {
         if (this.state.egg) {
           if (this.state.egg.x === undefined) {
@@ -167,9 +176,32 @@ export class GameEngine {
       this.enemySpawnIndex = 0;
       this.spawnTimer = 2.5;
     }
-    this.interWaveTimer = 2.0;
+    this.interWaveTimer = GameBalance.WAVES.INTER_WAVE_DELAY;
 
     return this.state;
+  }
+
+  public toggleAutoReceive(enabled?: boolean): void {
+    if (enabled !== undefined) {
+      this.state.autoReceiveHatch = enabled;
+    } else {
+      this.state.autoReceiveHatch = !this.state.autoReceiveHatch;
+    }
+  }
+
+  public getHatchCooldown(): number {
+    return this.state.hatchCooldownRemaining;
+  }
+
+  public selectHero(heroId?: string): void {
+    // Clearing selection is always valid, including while paused/defeated.
+    if (heroId === undefined) {
+      this.state.selectedHeroId = undefined;
+      return;
+    }
+    if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return;
+    if (!this.state.heroes.some((hero) => hero.id === heroId)) return;
+    this.state.selectedHeroId = heroId;
   }
 
   public restartLevel(): GameState {
@@ -289,74 +321,101 @@ export class GameEngine {
     if (targetEgg.hp === 0) {
       targetEgg.status = 'pending';
       targetEgg.readyToHatch = true;
-      this.tryHatchEggs();
+      if (!targetEgg.pendingHero) {
+        const isTutorial =
+          this.state.currentLevelId === 1 &&
+          targetEgg.slotIndex === 0 &&
+          targetEgg.hatchCount === 0 &&
+          this.totalHatchesInMatch === 0;
+        targetEgg.pendingHero = rollHatch(targetEgg.eggLevel, this.randomSource, isTutorial);
+      }
+
+      if (!this.state.hatchQueue.some((q) => q.eggId === targetEgg.id)) {
+        this.state.hatchQueue.push({
+          eggId: targetEgg.id,
+          slotIndex: targetEgg.slotIndex,
+          reward: targetEgg.pendingHero
+        });
+      }
+
+      if (
+        this.state.autoReceiveHatch &&
+        this.state.hatchCooldownRemaining <= 0 &&
+        this.getEmptyCells().length > 0
+      ) {
+        this.hatchOneFromQueue();
+      }
     }
 
     return true;
   }
 
-  public tryHatchEggs(): boolean {
+  public claimHatchReward(): boolean {
     if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return false;
-
-    const pendingEggs = this.state.eggs
-      .filter((e) => e.status === 'pending' || e.readyToHatch)
-      .sort((a, b) => a.slotIndex - b.slotIndex);
-
-    if (pendingEggs.length === 0) return false;
-
-    let hatchedAny = false;
-
-    for (const egg of pendingEggs) {
-      const emptyCells = this.getEmptyCells();
-      const isTutorial =
-        this.state.currentLevelId === 1 &&
-        egg.slotIndex === 0 &&
-        egg.hatchCount === 0 &&
-        this.totalHatchesInMatch === 0;
-
-      if (emptyCells.length === 0) {
-        if (!egg.pendingHero) {
-          egg.pendingHero = rollHatch(egg.eggLevel, this.randomSource, isTutorial);
-        }
-        this.state.notification = {
-          text: 'Bàn cờ đầy — hãy ghép nhân vật!',
-          color: '#f59e0b',
-          life: 2.0
-        };
-        continue;
-      }
-
-      let cell: { row: number; col: number };
-      if (isTutorial) {
-        // First hatch in Level 1: prioritized spawn at (row=4, col=2)
-        const targetCell = emptyCells.find((c) => c.row === 4 && c.col === 2);
-        if (targetCell) {
-          cell = targetCell;
-        } else {
-          const bottomRowCell = emptyCells.find((c) => c.row === 4);
-          cell = bottomRowCell ?? this.randomSource.choose(emptyCells);
-        }
-      } else {
-        cell = this.randomSource.choose(emptyCells);
-      }
-
-      const reward =
-        egg.pendingHero ?? rollHatch(egg.eggLevel, this.randomSource, isTutorial);
-
-      const newHero: Hero = {
-        id: `hero-${this.nextHeroId++}`,
-        kind: reward.kind,
-        row: cell.row,
-        col: cell.col,
-        tier: reward.heroTier,
-        angle: 0
+    if (this.state.hatchCooldownRemaining > 0) return false;
+    if (this.state.hatchQueue.length === 0) return false;
+    if (this.getEmptyCells().length === 0) {
+      this.state.notification = {
+        text: 'Bàn cờ đầy — hãy ghép nhân vật!',
+        color: '#f59e0b',
+        life: 2.0
       };
+      return false;
+    }
+    return this.hatchOneFromQueue();
+  }
 
-      this.state.heroes.push(newHero);
+  public hatchOneFromQueue(): boolean {
+    if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return false;
+    if (this.state.hatchQueue.length === 0) return false;
+
+    const emptyCells = this.getEmptyCells();
+    if (emptyCells.length === 0) {
+      this.state.notification = {
+        text: 'Bàn cờ đầy — hãy ghép nhân vật!',
+        color: '#f59e0b',
+        life: 2.0
+      };
+      return false;
+    }
+
+    const item = this.state.hatchQueue.shift()!;
+    const egg = this.state.eggs.find((e) => e.id === item.eggId);
+
+    const isTutorial =
+      this.state.currentLevelId === 1 &&
+      item.slotIndex === 0 &&
+      (egg ? egg.hatchCount === 0 : false) &&
+      this.totalHatchesInMatch === 0;
+
+    let cell: { row: number; col: number };
+    if (isTutorial) {
+      const targetCell = emptyCells.find((c) => c.row === 4 && c.col === 2);
+      if (targetCell) {
+        cell = targetCell;
+      } else {
+        const bottomRowCell = emptyCells.find((c) => c.row === 4);
+        cell = bottomRowCell ?? this.randomSource.choose(emptyCells);
+      }
+    } else {
+      cell = this.randomSource.choose(emptyCells);
+    }
+
+    const reward = item.reward;
+    const newHero: Hero = {
+      id: `hero-${this.nextHeroId++}`,
+      kind: reward.kind,
+      row: cell.row,
+      col: cell.col,
+      tier: reward.heroTier,
+      angle: 0
+    };
+
+    this.state.heroes.push(newHero);
+    this.totalHatchesInMatch += 1;
+
+    if (egg) {
       egg.hatchCount += 1;
-      this.totalHatchesInMatch += 1;
-
-      // Reset egg with increased HP
       const nextMaxHp = calculateEggMaxHp(egg.eggLevel, egg.hatchCount);
       egg.status = 'active';
       egg.pendingHero = null;
@@ -364,7 +423,6 @@ export class GameEngine {
       egg.maxHp = nextMaxHp;
       egg.hp = nextMaxHp;
 
-      // Clean up cooldowns for this egg
       for (const key of this.eggOrbitCooldowns.keys()) {
         if (key.endsWith(`:${egg.id}`)) this.eggOrbitCooldowns.delete(key);
       }
@@ -374,17 +432,46 @@ export class GameEngine {
       for (const key of this.lastEggHitTick.keys()) {
         if (key.endsWith(`:${egg.id}`)) this.lastEggHitTick.delete(key);
       }
-
-      this.state.notification = {
-        text: `+Hero ${reward.kind} (ATK ${2 ** reward.heroTier})`,
-        color: reward.kind === 'A' ? '#38bdf8' : '#34d399',
-        life: 2.0
-      };
-
-      hatchedAny = true;
     }
 
-    return hatchedAny;
+    this.state.hatchCooldownRemaining = GameBalance.HATCH.MIN_INTERVAL;
+
+    this.state.notification = {
+      text: `+Hero ${reward.kind} (ATK ${2 ** reward.heroTier})`,
+      color: reward.kind === 'A' ? '#38bdf8' : '#34d399',
+      life: 2.0
+    };
+
+    return true;
+  }
+
+  public tryHatchEggs(): boolean {
+    if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return false;
+
+    // Ensure any eggs in pending state are in hatchQueue
+    for (const egg of this.state.eggs) {
+      if ((egg.status === 'pending' || egg.readyToHatch) && !this.state.hatchQueue.some((q) => q.eggId === egg.id)) {
+        if (!egg.pendingHero) {
+          const isTutorial =
+            this.state.currentLevelId === 1 &&
+            egg.slotIndex === 0 &&
+            egg.hatchCount === 0 &&
+            this.totalHatchesInMatch === 0;
+          egg.pendingHero = rollHatch(egg.eggLevel, this.randomSource, isTutorial);
+        }
+        this.state.hatchQueue.push({
+          eggId: egg.id,
+          slotIndex: egg.slotIndex,
+          reward: egg.pendingHero
+        });
+      }
+    }
+
+    if (this.state.autoReceiveHatch && this.state.hatchCooldownRemaining <= 0) {
+      return this.hatchOneFromQueue();
+    }
+
+    return false;
   }
 
   public tryHatchEgg(): boolean {
@@ -395,6 +482,7 @@ export class GameEngine {
     switch (action.type) {
       case 'PAUSE':
         this.state.isPaused = true;
+        this.state.selectedHeroId = undefined;
         break;
       case 'RESUME':
         this.state.isPaused = false;
@@ -485,6 +573,18 @@ export class GameEngine {
         break;
       }
 
+      case 'CLAIM_HERO':
+        this.claimHatchReward();
+        break;
+
+      case 'TOGGLE_AUTO_RECEIVE':
+        this.toggleAutoReceive(action.enabled);
+        break;
+
+      case 'SELECT_HERO':
+        this.selectHero(action.heroId);
+        break;
+
       default:
         break;
     }
@@ -525,6 +625,21 @@ export class GameEngine {
       } else {
         this.eggDragCooldowns.set(key, nextTime);
       }
+    }
+
+    // Update hatch cooldown timer
+    if (this.state.hatchCooldownRemaining > 0) {
+      this.state.hatchCooldownRemaining = Math.max(0, this.state.hatchCooldownRemaining - dt);
+    }
+
+    // Auto receive logic: when enabled and off cooldown
+    if (
+      this.state.autoReceiveHatch &&
+      this.state.hatchCooldownRemaining <= 0 &&
+      this.state.hatchQueue.length > 0 &&
+      this.getEmptyCells().length > 0
+    ) {
+      this.hatchOneFromQueue();
     }
 
     // 2. Wave Scheduler: Spawn enemies according to current wave config
@@ -634,9 +749,15 @@ export class GameEngine {
       }
     }
 
-    // 7. Check monsters escaping (completing perimeter)
+    // 7. Check monsters escaping (completing perimeter) and dead monsters
     for (const monster of this.state.monsters) {
       if (monstersToRemove.has(monster.id)) continue;
+
+      if (monster.hp <= 0) {
+        monstersToRemove.add(monster.id);
+        this.state.kills += 1;
+        continue;
+      }
 
       if (monster.progress >= perimeter) {
         monstersToRemove.add(monster.id);
@@ -672,6 +793,7 @@ export class GameEngine {
 
     if (waveComplete) {
       if (this.state.wave >= this.currentLevel.waves.length) {
+        this.state.interWaveCountdown = undefined;
         if (this.state.baseHp > 0 && !this.state.isVictory) {
           this.state.isVictory = true;
           this.state.notification = {
@@ -682,11 +804,13 @@ export class GameEngine {
         }
       } else {
         this.interWaveTimer -= dt;
+        this.state.interWaveCountdown = Math.max(0, this.interWaveTimer);
         if (this.interWaveTimer <= 0) {
           this.state.wave += 1;
           this.enemySpawnIndex = 0;
           this.spawnTimer = 0.5; // Brief 0.5s pause before first monster of new wave
-          this.interWaveTimer = 2.0;
+          this.interWaveTimer = GameBalance.WAVES.INTER_WAVE_DELAY;
+          this.state.interWaveCountdown = undefined;
           this.state.notification = {
             text: `WAVE ${this.state.wave} Bắt đầu!`,
             color: '#38bdf8',
@@ -694,6 +818,8 @@ export class GameEngine {
           };
         }
       }
+    } else {
+      this.state.interWaveCountdown = undefined;
     }
 
     // 9. Update floating damage numbers

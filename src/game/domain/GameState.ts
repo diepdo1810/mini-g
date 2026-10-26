@@ -1,4 +1,4 @@
-import type { Hero, Monster, Egg, DamageNumber } from './types';
+import type { Hero, Monster, Egg, DamageNumber, QueuedHatchReward } from './types';
 import { GameBalance } from '../config/GameBalance';
 import { createEggsForLevel } from './EggProgression';
 
@@ -24,6 +24,11 @@ export interface GameState {
   isVictory: boolean;
   damageNumbers: DamageNumber[];
   notification?: NotificationMessage;
+  hatchQueue: QueuedHatchReward[];
+  autoReceiveHatch: boolean;
+  hatchCooldownRemaining: number;
+  interWaveCountdown?: number;
+  selectedHeroId?: string;
 }
 
 export function createInitialState(
@@ -65,7 +70,10 @@ export function createInitialState(
     isPaused: false,
     isGameOver: false,
     isVictory: false,
-    damageNumbers: []
+    damageNumbers: [],
+    hatchQueue: [],
+    autoReceiveHatch: GameBalance.HATCH.DEFAULT_AUTO_RECEIVE,
+    hatchCooldownRemaining: 0
   };
 
   return state;

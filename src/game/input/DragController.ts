@@ -13,6 +13,7 @@ export class DragController {
   private startPoint: Point | null = null;
   private currentPoint: Point = { x: 0, y: 0 };
   private isDragging: boolean = false;
+  private hasMovedPastTapThreshold: boolean = false;
 
   constructor(scene: Phaser.Scene, engine: GameEngine) {
     this.scene = scene;
@@ -46,25 +47,26 @@ export class DragController {
 
     const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
 
+    // Record start point for tap vs drag detection
+    this.startPoint = { x: pointer.x, y: pointer.y };
+    this.currentPoint = { x: pointer.x, y: pointer.y };
+    this.isDragging = false;
+    this.hasMovedPastTapThreshold = false;
+
     // Check if clicked inside board
     const col = Math.floor((pointer.x - X) / CELL_SIZE);
     const row = Math.floor((pointer.y - Y) / CELL_SIZE);
 
-    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) {
-      return;
-    }
-
-    const hero = this.engine.getState().heroes.find((h) => h.row === row && h.col === col);
-    if (hero) {
-      this.activeHero = hero;
-      this.startPoint = { x: pointer.x, y: pointer.y };
-      this.currentPoint = { x: pointer.x, y: pointer.y };
-      this.isDragging = false;
+    if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+      const hero = this.engine.getState().heroes.find((h) => h.row === row && h.col === col);
+      this.activeHero = hero ?? null;
+    } else {
+      this.activeHero = null;
     }
   }
 
   private onPointerMove(pointer: Phaser.Input.Pointer): void {
-    if (!this.activeHero || !this.startPoint) return;
+    if (!this.startPoint) return;
 
     this.currentPoint = { x: pointer.x, y: pointer.y };
 
@@ -72,8 +74,11 @@ export class DragController {
     const dy = this.currentPoint.y - this.startPoint.y;
     const distSq = dx * dx + dy * dy;
 
-    if (!this.isDragging && distSq >= GameBalance.DRAG.MIN_DISTANCE * GameBalance.DRAG.MIN_DISTANCE) {
-      this.isDragging = true;
+    if (distSq >= GameBalance.DRAG.MIN_DISTANCE * GameBalance.DRAG.MIN_DISTANCE) {
+      this.hasMovedPastTapThreshold = true;
+      if (this.activeHero) {
+        this.isDragging = true;
+      }
     }
   }
 
@@ -87,7 +92,16 @@ export class DragController {
       return;
     }
 
+    if (this.startPoint) {
+      const dx = pointer.x - this.startPoint.x;
+      const dy = pointer.y - this.startPoint.y;
+      if (dx * dx + dy * dy >= GameBalance.DRAG.MIN_DISTANCE * GameBalance.DRAG.MIN_DISTANCE) {
+        this.hasMovedPastTapThreshold = true;
+      }
+    }
+
     if (this.isDragging && this.activeHero) {
+      // DRAG ACTION
       // 1. Target is an Egg
       const targetEgg = this.engine.getEggAtPoint(pointer.x, pointer.y);
       if (targetEgg) {
@@ -125,6 +139,67 @@ export class DragController {
           }
         }
       }
+      this.engine.selectHero(undefined);
+    } else if (!this.hasMovedPastTapThreshold) {
+      // TAP ACTION: Tap-to-select and Tap-to-merge
+      const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
+      const col = Math.floor((pointer.x - X) / CELL_SIZE);
+      const row = Math.floor((pointer.y - Y) / CELL_SIZE);
+      const isInsideBoard = col >= 0 && col < COLS && row >= 0 && row < ROWS;
+
+      const currentSelectedId = this.engine.getState().selectedHeroId;
+
+      if (isInsideBoard) {
+        const tappedHero = this.engine.getState().heroes.find(
+          (h) => h.row === row && h.col === col
+        );
+
+        if (currentSelectedId) {
+          const selectedHero = this.engine.getState().heroes.find(
+            (h) => h.id === currentSelectedId
+          );
+
+          if (selectedHero) {
+            if (tappedHero && tappedHero.id === selectedHero.id) {
+              // Tapped selected hero again -> deselect
+              this.engine.selectHero(undefined);
+            } else if (
+              tappedHero &&
+              tappedHero.kind === selectedHero.kind &&
+              tappedHero.tier === selectedHero.tier
+            ) {
+              // Tapped valid merge target -> merge selected into tapped
+              this.engine.dispatch({
+                type: 'MERGE_HERO',
+                sourceId: selectedHero.id,
+                targetId: tappedHero.id
+              });
+              this.engine.selectHero(undefined);
+            } else {
+              // Tapped empty cell or invalid hero -> deselect
+              this.engine.selectHero(undefined);
+            }
+          } else {
+            this.engine.selectHero(tappedHero ? tappedHero.id : undefined);
+          }
+        } else {
+          // No hero currently selected -> select tapped hero
+          if (tappedHero) {
+            this.engine.selectHero(tappedHero.id);
+          }
+        }
+      } else {
+        // Tap outside board -> deselect
+        if (currentSelectedId) {
+          this.engine.selectHero(undefined);
+        }
+      }
+    } else {
+      // Gesture exceeded tap threshold but had no active hero to drag
+      // Reject from tap-to-merge; clear selection if present
+      if (this.engine.getState().selectedHeroId) {
+        this.engine.selectHero(undefined);
+      }
     }
 
     this.cancelDrag();
@@ -134,16 +209,60 @@ export class DragController {
     this.activeHero = null;
     this.startPoint = null;
     this.isDragging = false;
+    this.hasMovedPastTapThreshold = false;
     this.graphics.clear();
+  }
+
+  public clearSelection(): void {
+    this.engine.selectHero(undefined);
   }
 
   public render(): void {
     this.graphics.clear();
 
-    if (!this.isDragging || !this.activeHero) return;
+    const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
+
+    // Render tap selection & merge candidate highlights when not dragging
+    if (!this.isDragging) {
+      const selectedHeroId = this.engine.getState().selectedHeroId;
+      if (selectedHeroId) {
+        const selectedHero = this.engine.getState().heroes.find(
+          (h) => h.id === selectedHeroId
+        );
+
+        if (selectedHero) {
+          const selCellX = X + selectedHero.col * CELL_SIZE;
+          const selCellY = Y + selectedHero.row * CELL_SIZE;
+
+          // 1. Highlight selected hero: prominent cyan/white border
+          this.graphics.lineStyle(3, 0x38bdf8, 1.0);
+          this.graphics.strokeRoundedRect(selCellX + 3, selCellY + 3, CELL_SIZE - 6, CELL_SIZE - 6, 8);
+          this.graphics.lineStyle(1, 0xffffff, 0.8);
+          this.graphics.strokeRoundedRect(selCellX + 5, selCellY + 5, CELL_SIZE - 10, CELL_SIZE - 10, 6);
+
+          // 2. Highlight matching merge candidates with golden yellow border
+          const candidates = this.engine.getState().heroes.filter(
+            (h) =>
+              h.id !== selectedHero.id &&
+              h.kind === selectedHero.kind &&
+              h.tier === selectedHero.tier
+          );
+
+          for (const candidate of candidates) {
+            const candX = X + candidate.col * CELL_SIZE;
+            const candY = Y + candidate.row * CELL_SIZE;
+
+            this.graphics.lineStyle(2.5, 0xfacc15, 0.95);
+            this.graphics.strokeRoundedRect(candX + 3, candY + 3, CELL_SIZE - 6, CELL_SIZE - 6, 8);
+          }
+        }
+      }
+      return;
+    }
+
+    if (!this.activeHero) return;
 
     const heroCenter = this.engine.getHeroCenter(this.activeHero);
-    const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
 
     // Check hovered cell for hover highlight
     const hoverCol = Math.floor((this.currentPoint.x - X) / CELL_SIZE);
@@ -209,6 +328,7 @@ export class DragController {
     input.off('pointerup', this.onPointerUp, this);
     input.off('pointerupoutside', this.cancelDrag, this);
     input.off('gameout', this.cancelDrag, this);
+    this.scene.game.events.off(Phaser.Core.Events.BLUR, this.cancelDrag, this);
 
     this.graphics.destroy();
   }

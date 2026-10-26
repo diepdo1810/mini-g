@@ -212,6 +212,7 @@ describe('PHASE 3 FEEDBACK - Sát thương & Vị trí trứng', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: heroInit.id });
     }
+    engine.dispatch({ type: 'CLAIM_HERO' });
 
     const state = engine.getState();
     expect(state.heroes.length).toBe(2);

@@ -8,6 +8,8 @@ export interface HudCallbacks {
   onRestart: () => void;
   onGoToMap: () => void;
   onNextLevel?: () => void;
+  onClaimHero?: () => void;
+  onToggleAutoReceive?: () => void;
 }
 
 export class HudRenderer {
@@ -21,6 +23,18 @@ export class HudRenderer {
   private pauseBtn: Phaser.GameObjects.Text;
   private debugBtn: Phaser.GameObjects.Text;
   private notificationText: Phaser.GameObjects.Text;
+
+  // New HUD elements for Issue #25
+  private interWaveBanner: Phaser.GameObjects.Text;
+  private queueTitleText: Phaser.GameObjects.Text;
+  private queueBadgeTexts: Phaser.GameObjects.Text[] = [];
+  private queueOverflowText: Phaser.GameObjects.Text;
+  private claimHeroBtn: Phaser.GameObjects.Text;
+  private autoReceiveBtn: Phaser.GameObjects.Text;
+  private mapTouchTarget: Phaser.GameObjects.Rectangle;
+  private pauseTouchTarget: Phaser.GameObjects.Rectangle;
+  private claimTouchTarget: Phaser.GameObjects.Rectangle;
+  private autoTouchTarget: Phaser.GameObjects.Rectangle;
 
   private overlayBg?: Phaser.GameObjects.Rectangle;
   private bannerText?: Phaser.GameObjects.Text;
@@ -36,25 +50,23 @@ export class HudRenderer {
     this.callbacks = callbacks;
 
     // Header Line 1: < MAP, LVL X, WAVE X/Y, PAUSE
-    this.mapBtnHeader = scene.add.text(16, 20, '< MAP', {
+    this.mapBtnHeader = scene.add.text(16, 18, '< MAP', {
       fontSize: '13px',
       fontStyle: 'bold',
       color: '#ffffff',
       backgroundColor: '#1e293b',
-      padding: { left: 8, right: 8, top: 4, bottom: 4 },
+      padding: { left: 10, right: 10, top: 6, bottom: 6 },
       fontFamily: 'sans-serif'
-    })
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', callbacks.onGoToMap);
+    });
 
-    this.levelText = scene.add.text(82, 22, 'LVL 1', {
+    this.levelText = scene.add.text(88, 22, 'LVL 1', {
       fontSize: '15px',
       fontStyle: 'bold',
       color: '#38bdf8',
       fontFamily: 'sans-serif'
     });
 
-    this.waveText = scene.add.text(142, 22, 'WAVE 1/3', {
+    this.waveText = scene.add.text(148, 22, 'WAVE 1/3', {
       fontSize: '15px',
       fontStyle: 'bold',
       color: '#f8fafc',
@@ -62,53 +74,142 @@ export class HudRenderer {
     });
 
     // Pause button
-    this.pauseBtn = scene.add.text(360, 20, 'PAUSE', {
-      fontSize: '12px',
+    this.pauseBtn = scene.add.text(352, 18, 'PAUSE', {
+      fontSize: '13px',
       fontStyle: 'bold',
       color: '#ffffff',
       backgroundColor: '#334155',
-      padding: { left: 8, right: 8, top: 4, bottom: 4 },
+      padding: { left: 12, right: 12, top: 6, bottom: 6 },
       fontFamily: 'sans-serif'
-    })
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', callbacks.onTogglePause);
+    });
 
     // Header Line 2: Base HP, Kills, DBG
-    this.baseHpText = scene.add.text(16, 52, 'Base HP: 3/3', {
+    this.baseHpText = scene.add.text(16, 54, 'Base HP: 3/3', {
       fontSize: '14px',
       color: '#ef4444',
       fontStyle: 'bold',
       fontFamily: 'sans-serif'
     });
 
-    this.killsText = scene.add.text(160, 52, 'Kills: 0', {
+    this.killsText = scene.add.text(160, 54, 'Kills: 0', {
       fontSize: '14px',
       color: '#94a3b8',
       fontFamily: 'sans-serif'
     });
 
     // Debug toggle button
-    this.debugBtn = scene.add.text(360, 52, 'DBG: OFF', {
+    this.debugBtn = scene.add.text(352, 76, 'DBG: OFF', {
       fontSize: '11px',
       fontStyle: 'bold',
       color: '#94a3b8',
       backgroundColor: '#1e293b',
-      padding: { left: 6, right: 6, top: 3, bottom: 3 },
+      padding: { left: 8, right: 8, top: 4, bottom: 4 },
       fontFamily: 'sans-serif'
     })
       .setInteractive({ useHandCursor: true })
       .on('pointerdown', callbacks.onToggleDebug);
 
+    // Inter-wave countdown banner (above board)
+    this.interWaveBanner = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 110, '', {
+      fontSize: '14px',
+      fontStyle: 'bold',
+      color: '#facc15',
+      backgroundColor: '#1e293b',
+      padding: { left: 14, right: 14, top: 6, bottom: 6 },
+      stroke: '#000000',
+      strokeThickness: 2,
+      fontFamily: 'sans-serif'
+    }).setOrigin(0.5);
+    this.interWaveBanner.setVisible(false);
+
     // Dynamic notification banner
-    this.notificationText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 600, '', {
-      fontSize: '15px',
+    this.notificationText = scene.add.text(GameBalance.SCREEN.WIDTH / 2, 595, '', {
+      fontSize: '14px',
       fontStyle: 'bold',
       color: '#ffffff',
       stroke: '#000000',
       strokeThickness: 3,
       fontFamily: 'sans-serif'
     }).setOrigin(0.5);
+
+    // Queue title text
+    this.queueTitleText = scene.add.text(20, 638, 'HÀNG CHỜ: (0)', {
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#94a3b8',
+      fontFamily: 'sans-serif'
+    });
+
+    // 3 Visible Queue Badges
+    for (let i = 0; i < 3; i++) {
+      const badge = scene.add.text(20 + i * 42, 660, '', {
+        fontSize: '12px',
+        fontStyle: 'bold',
+        color: '#ffffff',
+        backgroundColor: '#1e293b',
+        padding: { left: 6, right: 6, top: 4, bottom: 4 },
+        fontFamily: 'sans-serif'
+      });
+      badge.setVisible(false);
+      this.queueBadgeTexts.push(badge);
+    }
+
+    // Overflow badge for queue > 3 (+N)
+    this.queueOverflowText = scene.add.text(20 + 3 * 42, 660, '+1', {
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#facc15',
+      backgroundColor: '#78350f',
+      padding: { left: 6, right: 6, top: 4, bottom: 4 },
+      fontFamily: 'sans-serif'
+    });
+    this.queueOverflowText.setVisible(false);
+
+    // Claim Hero Button
+    this.claimHeroBtn = scene.add.text(320, 655, 'NHẬN HERO', {
+      fontSize: '13px',
+      fontStyle: 'bold',
+      color: '#ffffff',
+      backgroundColor: '#16a34a',
+      padding: { left: 14, right: 14, top: 8, bottom: 8 },
+      fontFamily: 'sans-serif'
+    })
+      .setOrigin(0.5, 0);
+
+    // Auto Receive Toggle Button
+    this.autoReceiveBtn = scene.add.text(320, 727, 'TỰ ĐỘNG: TẮT', {
+      fontSize: '12px',
+      fontStyle: 'bold',
+      color: '#cbd5e1',
+      backgroundColor: '#334155',
+      padding: { left: 12, right: 12, top: 6, bottom: 6 },
+      fontFamily: 'sans-serif'
+    })
+      .setOrigin(0.5, 0);
+
+    // Transparent hit areas are independent from font/label size.
+    // All interactive buttons meet 44 CSS px height at 360x640 in Phaser FIT.
+    const hit = GameBalance.HUD.TOUCH_TARGETS;
+    const touchHeight = GameBalance.HUD.MIN_TOUCH_TARGET_PX;
+    const createTouchTarget = (
+      target: { x: number; y: number; width: number },
+      callback: () => void
+    ): Phaser.GameObjects.Rectangle =>
+      scene.add.rectangle(target.x, target.y, target.width, touchHeight, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', callback);
+    this.mapTouchTarget = createTouchTarget(hit.MAP, callbacks.onGoToMap);
+    this.pauseTouchTarget = createTouchTarget(hit.PAUSE, callbacks.onTogglePause);
+    this.claimTouchTarget = createTouchTarget(hit.CLAIM, () => {
+      if (this.canClaimHero) this.callbacks.onClaimHero?.();
+    });
+    this.autoTouchTarget = createTouchTarget(hit.AUTO, () => {
+      if (this.canToggleAuto) this.callbacks.onToggleAutoReceive?.();
+    });
   }
+
+  private canClaimHero = false;
+  private canToggleAuto = true;
 
   public render(state: GameState, debug: boolean, onRestart: () => void): void {
     this.levelText.setText(`LVL ${state.currentLevelId}`);
@@ -128,6 +229,86 @@ export class HudRenderer {
       this.notificationText.setAlpha(alpha);
     } else {
       this.notificationText.setVisible(false);
+    }
+
+    // Inter-wave countdown banner
+    if (state.interWaveCountdown !== undefined && !state.isGameOver && !state.isVictory) {
+      this.interWaveBanner.setText(`⏳ CHUẨN BỊ WAVE ${state.wave + 1}: ${state.interWaveCountdown.toFixed(1)}s`);
+      this.interWaveBanner.setVisible(true);
+    } else {
+      this.interWaveBanner.setVisible(false);
+    }
+
+    // Hatch Queue HUD
+    const queue = state.hatchQueue ?? [];
+    this.queueTitleText.setText(`HÀNG CHỜ: (${queue.length})`);
+
+    // Render up to 3 queue items
+    for (let i = 0; i < 3; i++) {
+      const badge = this.queueBadgeTexts[i];
+      if (i < queue.length) {
+        const item = queue[i];
+        badge.setText(`${item.reward.kind}${2 ** item.reward.heroTier}`);
+        if (item.reward.kind === 'A') {
+          badge.setBackgroundColor('#1e3a8a');
+          badge.setColor('#38bdf8');
+        } else {
+          badge.setBackgroundColor('#064e3b');
+          badge.setColor('#34d399');
+        }
+        badge.setVisible(true);
+      } else {
+        badge.setVisible(false);
+      }
+    }
+
+    // Overflow badge (+N)
+    if (queue.length > 3) {
+      this.queueOverflowText.setText(`+${queue.length - 3}`);
+      this.queueOverflowText.setVisible(true);
+    } else {
+      this.queueOverflowText.setVisible(false);
+    }
+
+    // Claim Hero Button state
+    const isCooldown = state.hatchCooldownRemaining > 0;
+    const isQueueEmpty = queue.length === 0;
+    const isBoardFull = state.heroes.length >= 25;
+    const isBlocked = state.isPaused || state.isGameOver || state.isVictory;
+    this.canClaimHero = !isBlocked && !isCooldown && !isQueueEmpty && !isBoardFull;
+    this.canToggleAuto = !isBlocked;
+
+    if (isBlocked) {
+      this.claimHeroBtn.setText('NHẬN HERO');
+      this.claimHeroBtn.setBackgroundColor('#1e293b');
+      this.claimHeroBtn.setColor('#475569');
+    } else if (isCooldown) {
+      this.claimHeroBtn.setText(`NHẬN (${state.hatchCooldownRemaining.toFixed(1)}s)`);
+      this.claimHeroBtn.setBackgroundColor('#334155');
+      this.claimHeroBtn.setColor('#94a3b8');
+    } else if (isBoardFull) {
+      this.claimHeroBtn.setText('BÀN ĐẦY');
+      this.claimHeroBtn.setBackgroundColor('#78350f');
+      this.claimHeroBtn.setColor('#fde68a');
+    } else if (isQueueEmpty) {
+      this.claimHeroBtn.setText('NHẬN HERO');
+      this.claimHeroBtn.setBackgroundColor('#1e293b');
+      this.claimHeroBtn.setColor('#64748b');
+    } else {
+      this.claimHeroBtn.setText('NHẬN HERO');
+      this.claimHeroBtn.setBackgroundColor('#16a34a');
+      this.claimHeroBtn.setColor('#ffffff');
+    }
+
+    // Auto Receive Button state
+    if (state.autoReceiveHatch) {
+      this.autoReceiveBtn.setText('TỰ ĐỘNG: BẬT');
+      this.autoReceiveBtn.setBackgroundColor('#059669');
+      this.autoReceiveBtn.setColor('#ecfdf5');
+    } else {
+      this.autoReceiveBtn.setText('TỰ ĐỘNG: TẮT');
+      this.autoReceiveBtn.setBackgroundColor('#334155');
+      this.autoReceiveBtn.setColor('#cbd5e1');
     }
 
     // Handle Game Over / Victory overlay
@@ -301,6 +482,16 @@ export class HudRenderer {
     this.pauseBtn.destroy();
     this.debugBtn.destroy();
     this.notificationText.destroy();
+    this.interWaveBanner.destroy();
+    this.queueTitleText.destroy();
+    for (const b of this.queueBadgeTexts) b.destroy();
+    this.queueOverflowText.destroy();
+    this.claimHeroBtn.destroy();
+    this.autoReceiveBtn.destroy();
+    this.mapTouchTarget.destroy();
+    this.pauseTouchTarget.destroy();
+    this.claimTouchTarget.destroy();
+    this.autoTouchTarget.destroy();
     this.clearOverlay();
   }
 }

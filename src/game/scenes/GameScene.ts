@@ -43,7 +43,9 @@ export class GameScene extends Phaser.Scene {
       onToggleDebug: () => this.toggleDebug(),
       onRestart: () => this.restart(),
       onGoToMap: () => this.goToMap(),
-      onNextLevel: () => this.goToNextLevel()
+      onNextLevel: () => this.goToNextLevel(),
+      onClaimHero: () => this.engine.dispatch({ type: 'CLAIM_HERO' }),
+      onToggleAutoReceive: () => this.engine.dispatch({ type: 'TOGGLE_AUTO_RECEIVE' })
     });
 
     // Keyboard controls
@@ -51,12 +53,12 @@ export class GameScene extends Phaser.Scene {
       this.input.keyboard.on('keydown-D', () => this.toggleDebug());
       this.input.keyboard.on('keydown-P', () => this.togglePause());
       this.input.keyboard.on('keydown-R', () => this.restart());
+      this.input.keyboard.on('keydown-C', () => this.engine.dispatch({ type: 'CLAIM_HERO' }));
+      this.input.keyboard.on('keydown-A', () => this.engine.dispatch({ type: 'TOGGLE_AUTO_RECEIVE' }));
     }
 
     // Auto-pause when browser tab loses focus / game is hidden
-    this.game.events.on(Phaser.Core.Events.BLUR, () => {
-      this.engine.dispatch({ type: 'PAUSE' });
-    });
+    this.game.events.on(Phaser.Core.Events.BLUR, this.onGameBlur, this);
 
     // Cleanup on scene shutdown or destroy
     this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
@@ -66,7 +68,14 @@ export class GameScene extends Phaser.Scene {
     this.boardRenderer.render(this.debugMode);
   }
 
+  private onGameBlur(): void {
+    this.dragController.cancelDrag();
+    this.dragController.clearSelection();
+    this.engine.dispatch({ type: 'PAUSE' });
+  }
+
   private cleanup(): void {
+    this.game.events.off(Phaser.Core.Events.BLUR, this.onGameBlur, this);
     this.boardRenderer.destroy();
     this.entityRenderer.destroy();
     this.eggRenderer.destroy();
@@ -77,6 +86,7 @@ export class GameScene extends Phaser.Scene {
   private togglePause(): void {
     const isPaused = this.engine.getState().isPaused;
     this.engine.dispatch({ type: isPaused ? 'RESUME' : 'PAUSE' });
+    this.dragController.clearSelection();
   }
 
   private toggleDebug(): void {
@@ -88,10 +98,12 @@ export class GameScene extends Phaser.Scene {
     this.hasRecordedResult = false;
     this.engine.dispatch({ type: 'RESTART' });
     this.dragController.cancelDrag();
+    this.dragController.clearSelection();
     this.boardRenderer.render(this.debugMode);
   }
 
   private goToMap(): void {
+    this.dragController.clearSelection();
     this.scene.start('MapScene');
   }
 
