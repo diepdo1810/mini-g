@@ -331,6 +331,8 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
   it('E14: Bàn 25 ô đầy: giữ queue, cần 2 lần ghép để dành 1 ô trống', () => {
     const engine = new GameEngine(undefined, mockRandom, getLevelConfig(2));
     const state = engine.getState();
+    // Isolate board-capacity behavior from automatic sword collisions with eggs.
+    engine.getHeroCenter = () => ({ x: 225, y: 300 });
     state.heroes = [];
     for (let row = 0; row < 5; row++) {
       for (let col = 0; col < 5; col++) {
