@@ -9,12 +9,12 @@
 ## Thu thập (đợt 1)
 
 - Tổng số bài duy nhất: **612**
-- Theo sao trong **mẫu lựa chọn có chủ đích**: 1★: 120; 2★: 83; 3★: 0; 4★: 2; 5★: 47.
+- Theo sao trong **đợt 1** (mẫu có chủ đích): 1★ 120; 2★ 83; 3★ 0; 4★ 2; 5★ 47. Xem **Tổng hợp toàn bộ mẫu** để có thống kê cập nhật.
 - Tập lọc: VN-newest: 2 trang, 52 kết quả; US-1-star: 3 trang, 120 kết quả, còn trang sau; US-2-star: 2 trang, 80 kết quả, còn trang sau.
 - **Không dùng tỷ lệ của mẫu để suy ra tỷ lệ toàn bộ người dùng**, vì thu thập có chủ đích theo điểm sao và quốc gia.
 - Cần thêm lượt thu thập nhiều ngôn ngữ/thiết bị và các trang tiếp theo để tiến gần đến toàn bộ nhận xét.
 
-## Tần suất chủ đề (gắn nhãn từ khóa, một bài có thể có nhiều nhãn)
+## Tần suất chủ đề trong đợt 1 (nhãn từ khóa; một bài có thể có nhiều nhãn)
 
 - Đồ họa/nhân vật: 134 bài
 - Gameplay thú vị: 106 bài
@@ -40,6 +40,30 @@
 
 - US-3-star: 80 phản hồi từ 2 trang (vẫn còn trang sau); US-4-star: 80 phản hồi từ 2 trang (vẫn còn trang sau); US-5-star: 120 phản hồi từ 3 trang (vẫn còn trang sau); US-newest: 80 phản hồi từ 2 trang (vẫn còn trang sau).
 - Phân bố sao và tần suất chủ đề ở phần đầu phản ánh **đợt 1**, cần xem bảng từng bài cho toàn bộ mẫu đã thu thập. Không áp dụng tỷ lệ trên mẫu này cho toàn thể người dùng.
+
+## Tổng hợp toàn bộ mẫu đã lấy
+
+- **612** bài đánh giá duy nhất; **52 VN** và **560 US**.
+- Sao: 1★ 145 · 2★ 90 · 3★ 86 · 4★ 88 · 5★ 203.
+- Các chủ đề gắn nhãn tự động trong 612 bài (một bài có thể nhiều nhãn): Đồ họa/nhân vật: 376; Gameplay thú vị: 352; Tiến trình/độ khó: 243; Áp lực mua/P2W: 240; Tài nguyên/phần thưởng: 210; Cập nhật/sự kiện: 104; Chiến thuật: 101; Quảng cáo sai gameplay: 72; Gameplay lặp/thụ động: 71; Lỗi/hiệu năng: 26; Hỗ trợ/hoàn tiền: 15.
+- Mẫu cố ý lấy nhiều bài 1–2 sao để tìm vấn đề và nhiều bài 4–5 sao để tìm điểm tốt. **Không đại diện toàn bộ 65 nghìn lượt đánh giá.**
+- Nhiều bộ lọc vẫn còn trang tiếp theo. Firecrawl gặp giới hạn yêu cầu/phút nên không thể khẳng định đã lấy toàn bộ.
+- Bảng dưới là **chỉ mục metadata và permalink** của bài nhận xét, không phải toàn văn. Muốn đọc phản hồi gốc, mở liên kết từng bài.
+
+## Tách biệt: quảng cáo và trò chơi thực
+
+**Quan sát của người phát triển Mini-G:** Video quảng cáo giới thiệu gameplay có Hero sinh và ghép nhanh, kiếm xoay đánh quái; khi xem gameplay thực tế, game khác đáng kể. Do đó:
+- Không được dùng đánh giá về game thật như bằng chứng người chơi thích/chê trực tiếp cơ chế ghép nhanh trong quảng cáo.
+- Vẫn dùng review game thật để học các bài học **quảng cáo không đúng game**, tiến độ khó, kiếm tài nguyên, nút mua, đồ họa và giữ chân người chơi.
+- **Mini-G** hiện đang lấy cảm hứng từ cơ chế quảng cáo; phải tự playtest với người dùng để kiểm chứng tính thú vị.
+
+## Góp ý gameplay riêng cho Mini-G (ý kiến thiết kế, không phải dữ liệu Google Play)
+
+- **Vấn đề 1: Bàn chật.** Thử giữ 5×5 nhưng tận dụng nhiều diện tích hiển thị hơn; nếu chưa đủ, A/B test 6×6 với ô chạm tối thiểu phù hợp cảm ứng.
+- **Vấn đề 2: Hero sinh dồn.** Giới hạn hàng chờ nở, cho người chơi chủ động nhận hoặc bật Auto Hatch; không để số Hero sinh vượt khả năng điều khiển.
+- **Vấn đề 3: Ghép quá gấp.** Hỗ trợ nhấn Hero A rồi nhấn Hero B tương ứng để ghép bên cạnh kéo thả, highlight cặp ghép được.
+- **Vấn đề 4: Mất quyết định chiến thuật.** Tránh tự động ghép tất cả. Giữ giá trị của vị trí Hero, cường độ kiếm, mục tiêu và thứ tự ghép.
+- **Đo lường:** thời gian tới lượt ghép đầu tiên, số thao tác ghép/phút, thời gian bàn gần đầy, tỉ lệ thất bại từng level, cảm giác kiểm soát do người chơi tự báo.
 
 ## Danh mục các bài đánh giá đã truy xuất
 
