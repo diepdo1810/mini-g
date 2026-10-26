@@ -43,7 +43,9 @@ export class GameScene extends Phaser.Scene {
       onToggleDebug: () => this.toggleDebug(),
       onRestart: () => this.restart(),
       onGoToMap: () => this.goToMap(),
-      onNextLevel: () => this.goToNextLevel()
+      onNextLevel: () => this.goToNextLevel(),
+      onClaimHero: () => this.engine.dispatch({ type: 'CLAIM_HERO' }),
+      onToggleAutoReceive: () => this.engine.dispatch({ type: 'TOGGLE_AUTO_RECEIVE' })
     });
 
     // Keyboard controls
@@ -51,6 +53,8 @@ export class GameScene extends Phaser.Scene {
       this.input.keyboard.on('keydown-D', () => this.toggleDebug());
       this.input.keyboard.on('keydown-P', () => this.togglePause());
       this.input.keyboard.on('keydown-R', () => this.restart());
+      this.input.keyboard.on('keydown-C', () => this.engine.dispatch({ type: 'CLAIM_HERO' }));
+      this.input.keyboard.on('keydown-A', () => this.engine.dispatch({ type: 'TOGGLE_AUTO_RECEIVE' }));
     }
 
     // Auto-pause when browser tab loses focus / game is hidden
@@ -77,6 +81,7 @@ export class GameScene extends Phaser.Scene {
   private togglePause(): void {
     const isPaused = this.engine.getState().isPaused;
     this.engine.dispatch({ type: isPaused ? 'RESUME' : 'PAUSE' });
+    this.dragController.clearSelection();
   }
 
   private toggleDebug(): void {
@@ -88,10 +93,12 @@ export class GameScene extends Phaser.Scene {
     this.hasRecordedResult = false;
     this.engine.dispatch({ type: 'RESTART' });
     this.dragController.cancelDrag();
+    this.dragController.clearSelection();
     this.boardRenderer.render(this.debugMode);
   }
 
   private goToMap(): void {
+    this.dragController.clearSelection();
     this.scene.start('MapScene');
   }
 

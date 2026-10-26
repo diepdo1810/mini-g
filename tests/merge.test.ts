@@ -16,11 +16,12 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
     const hero1 = engine.getState().heroes[0];
     expect(engine.getState().heroes.length).toBe(1);
 
-    // Hit egg 3 times
+    // Hit egg 3 times then claim
     for (let i = 0; i < 3; i++) {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
+    engine.dispatch({ type: 'CLAIM_HERO' });
 
     const state = engine.getState();
     // Should have hatched a second hero!
@@ -44,15 +45,20 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
+    engine.dispatch({ type: 'CLAIM_HERO' });
 
-    // Set mock random so next() for cell is 0.0, and next() for kind is 0.7 (>= 0.5 -> 'B')
-    mockRandom.setValues([0.0, 0.7]);
+    // Set mock random so rollHatch kind is 0.7 (>= 0.5 -> 'B'), and cell choose is 0.0
+    mockRandom.setValues([0.7, 0.0]);
+
+    // Advance cooldown
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
 
     // Hatch 2nd egg (5 HP)
     for (let i = 0; i < 5; i++) {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
+    engine.dispatch({ type: 'CLAIM_HERO' });
 
     const state = engine.getState();
     expect(state.heroes.length).toBe(3);
@@ -85,6 +91,7 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
+    engine.dispatch({ type: 'CLAIM_HERO' });
 
     const [h1, h2] = engine.getState().heroes;
     expect(h1.kind).toBe('A');
@@ -169,7 +176,8 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
     // Now merge h-0-0 into h-0-1 to free cell (0, 0)
     engine.dispatch({ type: 'MERGE_HERO', sourceId: 'h-0-0', targetId: 'h-0-1' });
 
-    // Cell was freed -> pending hatch triggers automatically!
+    // Cell was freed -> claim pending hatch!
+    expect(engine.claimHatchReward()).toBe(true);
     const stateAfter = engine.getState();
     expect(stateAfter.heroes.length).toBe(25); // 25 - 1 (merged) + 1 (hatched) = 25
     expect(stateAfter.egg.readyToHatch).toBe(false);

@@ -26,6 +26,12 @@ export interface HatchReward {
   heroTier: number;
 }
 
+export interface QueuedHatchReward {
+  eggId: string;
+  slotIndex: number;
+  reward: HatchReward;
+}
+
 export interface Egg {
   id: string;
   slotIndex: number;

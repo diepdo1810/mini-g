@@ -69,8 +69,12 @@ describe('Phase 2 - Egg Combat & Drag Logic', () => {
     engine.tick(0.1);
     engine.tick(0.1);
 
-    // Hit 3: egg reaches 0 HP and immediately hatches 2nd hero & resets to 5 HP
+    // Hit 3: egg reaches 0 HP, ready to hatch in queue; claimed -> 2nd hero & resets to 5 HP
     engine.dispatch({ type: 'ATTACK_EGG', heroId: hero.id });
+    expect(engine.getState().egg.readyToHatch).toBe(true);
+    expect(engine.getState().hatchQueue).toHaveLength(1);
+
+    engine.dispatch({ type: 'CLAIM_HERO' });
     expect(engine.getState().heroes.length).toBe(2);
     expect(engine.getState().egg.hatchCount).toBe(1);
     expect(engine.getState().egg.hp).toBe(5);

@@ -60,7 +60,7 @@ export const GameBalance = {
   WAVES: {
     TOTAL: 5,
     SPAWN_INTERVAL: 2.5,
-    INTER_WAVE_DELAY: 2.0,
+    INTER_WAVE_DELAY: 4.0,
     CONFIGS: [
       { monsterCount: 1, monsterHp: 3, monsterSpeed: 32 },
       { monsterCount: 2, monsterHp: 4, monsterSpeed: 34 },
@@ -80,6 +80,11 @@ export const GameBalance = {
     COLOR: 0xf59e0b,
     DRAG_COOLDOWN_MS: 250,
     ORBIT_COOLDOWN_MS: 500
+  },
+  HATCH: {
+    MIN_INTERVAL: 2.5,
+    DEFAULT_AUTO_RECEIVE: false,
+    MAX_VISIBLE_QUEUE: 3
   },
   DRAG: {
     MIN_DISTANCE: 18,

@@ -200,6 +200,7 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero.id, eggId: state.eggs[1].id });
     }
+    expect(engine.claimHatchReward()).toBe(true);
 
     expect(state.eggs[1].hatchCount).toBe(1);
     // Base 5 + 2 * 1 = 7 HP
@@ -312,9 +313,12 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
     state.eggs[1].hp = 1;
 
     engine.applyEggDamage(hero, state.eggs[0].id, 'drag');
-    // Advance tick so cooldown does not interfere
-    for (let t = 0; t < 4; t++) engine.tick(0.1);
+    expect(engine.claimHatchReward()).toBe(true);
+
+    // Advance tick past cooldown
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
     engine.applyEggDamage(hero, state.eggs[1].id, 'drag');
+    expect(engine.claimHatchReward()).toBe(true);
 
     expect(state.heroes.length).toBe(3); // Initial 1 + 2 hatched
     const ids = new Set(state.heroes.map((h) => h.id));
@@ -367,15 +371,20 @@ describe('MD-FIX-EGG-01: Multi-Egg & Boss Evolution Acceptance Tests', () => {
     // Merge 1: merges hero-0-0 and hero-0-1 -> frees 1 cell!
     engine.dispatch({ type: 'MERGE_HERO', sourceId: 'hero-0-0', targetId: 'hero-0-1' });
 
-    // Pending egg 1 should claim the freed cell!
+    // Claim first pending egg into freed cell!
+    expect(engine.claimHatchReward()).toBe(true);
     expect(state.eggs[0].status).toBe('active');
     expect(state.eggs[1].status).toBe('pending'); // egg 2 still pending
     expect(state.heroes.length).toBe(25);
 
+    // Advance cooldown
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
+
     // Merge 2: merges hero-1-0 and hero-1-1 -> frees another cell!
     engine.dispatch({ type: 'MERGE_HERO', sourceId: 'hero-1-0', targetId: 'hero-1-1' });
 
-    // Pending egg 2 claims the second cell!
+    // Claim second pending egg into second freed cell!
+    expect(engine.claimHatchReward()).toBe(true);
     expect(state.eggs[1].status).toBe('active');
     expect(state.heroes.length).toBe(25);
   });
