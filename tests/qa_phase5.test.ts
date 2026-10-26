@@ -167,7 +167,7 @@ describe('Phase 5 QA & Playtest Verification', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
-    engine.dispatch({ type: 'CLAIM_HERO' });
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
     expect(s.heroes.length).toBe(2);
 
     // Merge hero1 and hero2 when needed or hatch more heroes
