@@ -10,18 +10,20 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
   beforeEach(() => {
     mockRandom = new MockRandomSource([0.1]);
     engine = new GameEngine(undefined, mockRandom);
+    // Keep tests about player actions independent of automatic orbit egg hits.
+    engine.getHeroCenter = () => ({ x: 225, y: 300 });
   });
 
   it('T07: First egg reaching 0 HP hatches Kind A tier 0 into an empty cell, resets egg to 5 HP', () => {
     const hero1 = engine.getState().heroes[0];
     expect(engine.getState().heroes.length).toBe(1);
 
-    // Hit egg 3 times then claim
+    // Hit egg 3 times then wait for automatic incubation
     for (let i = 0; i < 3; i++) {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
-    engine.dispatch({ type: 'CLAIM_HERO' });
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
 
     const state = engine.getState();
     // Should have hatched a second hero!
@@ -45,12 +47,12 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
-    engine.dispatch({ type: 'CLAIM_HERO' });
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
 
     // Set mock random so rollHatch kind is 0.7 (>= 0.5 -> 'B'), and cell choose is 0.0
     mockRandom.setValues([0.7, 0.0]);
 
-    // Advance cooldown
+    // No manual claim/cooldown; allow original queued hatch to settle
     for (let t = 0; t < 26; t++) engine.tick(0.1);
 
     // Hatch 2nd egg (5 HP)
@@ -58,7 +60,7 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
-    engine.dispatch({ type: 'CLAIM_HERO' });
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
 
     const state = engine.getState();
     expect(state.heroes.length).toBe(3);
@@ -91,7 +93,7 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
       for (let t = 0; t < 3; t++) engine.tick(0.1);
       engine.dispatch({ type: 'ATTACK_EGG', heroId: hero1.id });
     }
-    engine.dispatch({ type: 'CLAIM_HERO' });
+    for (let t = 0; t < 26; t++) engine.tick(0.1);
 
     const [h1, h2] = engine.getState().heroes;
     expect(h1.kind).toBe('A');
@@ -146,41 +148,36 @@ describe('Phase 3 - Hatching, Movement & 2048 Merge', () => {
     expect(state.heroes.find((h) => h.id === 'hero-a1')?.tier).toBe(1);
   });
 
-  it('T12: Handles board full (25 cells) - stays readyToHatch until a merge creates space', () => {
+  it('T12: full board preserves READY reward until two merges free a reserve cell', () => {
     const state = engine.getState();
     state.heroes = [];
-
-    // Fill all 25 cells with Kind A tier 0
-    for (let r = 0; r < 5; r++) {
-      for (let c = 0; c < 5; c++) {
+    for (let row = 0; row < 5; row++) {
+      for (let col = 0; col < 5; col++) {
         state.heroes.push({
-          id: `h-${r}-${c}`,
-          kind: 'A',
-          row: r,
-          col: c,
-          tier: 0,
-          angle: 0
+          id: `h-${row}-${col}`, kind: 'A', row, col, tier: 0, angle: 0
         });
       }
     }
-    expect(state.heroes.length).toBe(25);
-
-    // Damage egg to 0
+    expect(state.heroes).toHaveLength(25);
     state.egg.hp = 1;
     engine.dispatch({ type: 'ATTACK_EGG', heroId: 'h-0-0' });
+    expect(state.egg.readyToHatch).toBe(false);
+    expect(state.egg.hp).toBe(5);
+    expect(state.hatchQueue).toHaveLength(1);
 
-    // Board full, egg cannot hatch yet
-    expect(engine.getState().egg.readyToHatch).toBe(true);
-    expect(engine.getState().heroes.length).toBe(25);
+    for (let t = 0; t < 30; t++) engine.tick(0.1);
+    expect(state.hatchQueue[0].remainingSeconds).toBe(0);
+    expect(state.heroes).toHaveLength(25);
 
-    // Now merge h-0-0 into h-0-1 to free cell (0, 0)
     engine.dispatch({ type: 'MERGE_HERO', sourceId: 'h-0-0', targetId: 'h-0-1' });
+    for (let t = 0; t < 10; t++) engine.tick(0.1);
+    expect(state.heroes).toHaveLength(24);
+    expect(state.hatchQueue).toHaveLength(1);
 
-    // Cell was freed -> claim pending hatch!
-    expect(engine.claimHatchReward()).toBe(true);
-    const stateAfter = engine.getState();
-    expect(stateAfter.heroes.length).toBe(25); // 25 - 1 (merged) + 1 (hatched) = 25
-    expect(stateAfter.egg.readyToHatch).toBe(false);
-    expect(stateAfter.egg.hatchCount).toBe(1);
+    engine.dispatch({ type: 'MERGE_HERO', sourceId: 'h-1-0', targetId: 'h-1-1' });
+    for (let t = 0; t < 7; t++) engine.tick(0.1);
+    expect(state.heroes).toHaveLength(24);
+    expect(state.hatchQueue).toHaveLength(0);
+    expect(state.egg.hatchCount).toBe(1);
   });
 });
