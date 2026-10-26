@@ -13,6 +13,7 @@ export class DragController {
   private startPoint: Point | null = null;
   private currentPoint: Point = { x: 0, y: 0 };
   private isDragging: boolean = false;
+  private hasMovedPastTapThreshold: boolean = false;
 
   constructor(scene: Phaser.Scene, engine: GameEngine) {
     this.scene = scene;
@@ -50,6 +51,7 @@ export class DragController {
     this.startPoint = { x: pointer.x, y: pointer.y };
     this.currentPoint = { x: pointer.x, y: pointer.y };
     this.isDragging = false;
+    this.hasMovedPastTapThreshold = false;
 
     // Check if clicked inside board
     const col = Math.floor((pointer.x - X) / CELL_SIZE);
@@ -72,7 +74,8 @@ export class DragController {
     const dy = this.currentPoint.y - this.startPoint.y;
     const distSq = dx * dx + dy * dy;
 
-    if (!this.isDragging && distSq >= GameBalance.DRAG.MIN_DISTANCE * GameBalance.DRAG.MIN_DISTANCE) {
+    if (distSq >= GameBalance.DRAG.MIN_DISTANCE * GameBalance.DRAG.MIN_DISTANCE) {
+      this.hasMovedPastTapThreshold = true;
       if (this.activeHero) {
         this.isDragging = true;
       }
@@ -87,6 +90,14 @@ export class DragController {
     ) {
       this.cancelDrag();
       return;
+    }
+
+    if (this.startPoint) {
+      const dx = pointer.x - this.startPoint.x;
+      const dy = pointer.y - this.startPoint.y;
+      if (dx * dx + dy * dy >= GameBalance.DRAG.MIN_DISTANCE * GameBalance.DRAG.MIN_DISTANCE) {
+        this.hasMovedPastTapThreshold = true;
+      }
     }
 
     if (this.isDragging && this.activeHero) {
@@ -129,7 +140,7 @@ export class DragController {
         }
       }
       this.engine.selectHero(undefined);
-    } else if (!this.isDragging) {
+    } else if (!this.hasMovedPastTapThreshold) {
       // TAP ACTION: Tap-to-select and Tap-to-merge
       const { X, Y, CELL_SIZE, ROWS, COLS } = GameBalance.BOARD;
       const col = Math.floor((pointer.x - X) / CELL_SIZE);
@@ -183,6 +194,12 @@ export class DragController {
           this.engine.selectHero(undefined);
         }
       }
+    } else {
+      // Gesture exceeded tap threshold but had no active hero to drag
+      // Reject from tap-to-merge; clear selection if present
+      if (this.engine.getState().selectedHeroId) {
+        this.engine.selectHero(undefined);
+      }
     }
 
     this.cancelDrag();
@@ -192,6 +209,7 @@ export class DragController {
     this.activeHero = null;
     this.startPoint = null;
     this.isDragging = false;
+    this.hasMovedPastTapThreshold = false;
     this.graphics.clear();
   }
 

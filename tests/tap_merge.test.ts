@@ -1,5 +1,18 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+vi.mock('phaser', () => ({
+  default: {
+    Core: {
+      Events: {
+        BLUR: 'blur'
+      }
+    }
+  }
+}));
+
 import { GameEngine } from '../src/game/domain/GameEngine';
+import { GameBalance } from '../src/game/config/GameBalance';
+import { DragController } from '../src/game/input/DragController';
 import { getLevelConfig } from '../src/game/config/levels';
 import type { RandomSource } from '../src/game/domain/RandomSource';
 
@@ -92,5 +105,85 @@ describe('Issue #25 - Tap-to-Select and Tap-to-Merge Logic', () => {
     // Restart clears selection
     engine.dispatch({ type: 'RESTART' });
     expect(engine.getState().selectedHeroId).toBeUndefined();
+  });
+
+  it('rejects moved gestures starting from empty cell or outside board as tap merge in DragController', () => {
+    const mockScene = {
+      input: { on: () => {}, off: () => {} },
+      game: { events: { on: () => {}, off: () => {} } },
+      add: {
+        graphics: () => ({
+          clear: () => {},
+          destroy: () => {},
+          lineStyle: () => {},
+          strokeRoundedRect: () => {},
+          strokeRect: () => {},
+          fillStyle: () => {},
+          fillRoundedRect: () => {},
+          lineBetween: () => {}
+        })
+      }
+    };
+
+    const state = engine.getState();
+    const hero1 = state.heroes[0]; // A0 at (0, 2)
+    // Add compatible A0 at (1, 2)
+    state.heroes.push({
+      id: 'hero-2',
+      kind: 'A',
+      row: 1,
+      col: 2,
+      tier: 0,
+      angle: 0
+    });
+
+    const controller = new DragController(mockScene as any, engine);
+
+    // 1. Select hero1
+    engine.dispatch({ type: 'SELECT_HERO', heroId: hero1.id });
+    expect(engine.getState().selectedHeroId).toBe(hero1.id);
+
+    // 2. Simulate swipe starting at empty cell (row 3, col 3)
+    const { X, Y, CELL_SIZE } = GameBalance.BOARD;
+    const startX = X + 3.5 * CELL_SIZE;
+    const startY = Y + 3.5 * CELL_SIZE;
+
+    // Pointer down on empty cell
+    controller['onPointerDown']({ x: startX, y: startY } as any);
+
+    // Pointer moves towards hero-2 (row 1, col 2)
+    const endX = X + 2.5 * CELL_SIZE;
+    const endY = Y + 1.5 * CELL_SIZE;
+    controller['onPointerMove']({ x: endX, y: endY } as any);
+
+    // Pointer up on hero-2
+    controller['onPointerUp']({ x: endX, y: endY } as any);
+
+    // MUST NOT merge because gesture moved beyond tap threshold!
+    expect(state.heroes).toHaveLength(2);
+    expect(state.heroes.find((h: any) => h.id === 'hero-2')?.tier).toBe(0);
+
+    // 3. Simulate swipe starting outside the board onto hero-2
+    engine.dispatch({ type: 'SELECT_HERO', heroId: hero1.id });
+    const outsideX = 10;
+    const outsideY = 10;
+    controller['onPointerDown']({ x: outsideX, y: outsideY } as any);
+    controller['onPointerMove']({ x: endX, y: endY } as any);
+    controller['onPointerUp']({ x: endX, y: endY } as any);
+
+    // MUST NOT merge because gesture moved from outside board beyond tap threshold!
+    expect(state.heroes).toHaveLength(2);
+    expect(state.heroes.find((h: any) => h.id === 'hero-2')?.tier).toBe(0);
+
+    // 4. Now simulate a clean TAP on hero-2 (movement = 0)
+    controller['onPointerDown']({ x: endX, y: endY } as any);
+    // Hero 1 re-selected if was cleared by swipe
+    engine.dispatch({ type: 'SELECT_HERO', heroId: hero1.id });
+    controller['onPointerUp']({ x: endX, y: endY } as any);
+
+    // Clean tap DOES merge
+    expect(state.heroes).toHaveLength(1);
+    expect(state.heroes[0].id).toBe('hero-2');
+    expect(state.heroes[0].tier).toBe(1);
   });
 });
