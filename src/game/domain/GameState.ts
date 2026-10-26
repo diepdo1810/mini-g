@@ -25,8 +25,7 @@ export interface GameState {
   damageNumbers: DamageNumber[];
   notification?: NotificationMessage;
   hatchQueue: QueuedHatchReward[];
-  autoReceiveHatch: boolean;
-  hatchCooldownRemaining: number;
+  mergeGraceRemaining: number;
   interWaveCountdown?: number;
   selectedHeroId?: string;
 }
@@ -72,8 +71,7 @@ export function createInitialState(
     isVictory: false,
     damageNumbers: [],
     hatchQueue: [],
-    autoReceiveHatch: GameBalance.HATCH.DEFAULT_AUTO_RECEIVE,
-    hatchCooldownRemaining: 0
+    mergeGraceRemaining: 0
   };
 
   return state;
