@@ -7,7 +7,8 @@ Ngày: 25/10/2026. File này **không** xác nhận QA Android đã PASS.
 - GitHub Actions chạy `pnpm install --frozen-lockfile`, `pnpm typecheck`, `pnpm test`, `pnpm build`.
 - Snapshot trước Issue #15: [CI PR #20](https://github.com/diepdo1810/mini-g/actions/runs/40169644011) **PASS: 13 test files, 106 tests**.
 - Unit tests đã kiểm tra logic: Sword/monster hit, egg HP/hatch/merge, Wave/Boss escape, Campaign unlock, 10-level configuration, egg tier limits.
-- Issue #15 bổ sung test sanitization lưu tiến trình; xem **Checks của PR #15** để biết kết quả thực tế (không suy đoán trước).
+- PR #21 (Issue #15) bổ sung 5 test sanitization; [CI run #40170042029](https://github.com/diepdo1810/mini-g/actions/runs/40170042029) đã PASS (111/111 tests).
+- Nhánh QA tiếp theo cho Issue #15: `tests/campaign_full_progression.test.ts` kiểm tra lần lượt 1→10, reload sau Boss 5/10, replay giữ best stars/kills, và chặn ghi kết quả màn đang khóa. **Chưa kết luận PASS trước khi CI PR tương ứng chạy xong.**
 
 ## Manual browser QA (chưa chạy)
 
