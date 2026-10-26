@@ -65,7 +65,10 @@ describe('Issue #25 - Auto Hatch + Reserve Queue', () => {
     expect(state.heroes[1].tier).toBe(0);
     expect([state.heroes[1].row, state.heroes[1].col]).toEqual([4, 2]);
     expect(state.hatchQueue).toHaveLength(0);
-    expect(state.eggs[0].hp).toBe(5);
+    expect(state.eggs[0].hatchCount).toBe(1);
+    // Newly spawned bottom hero may immediately hit the replacement egg by orbit.
+    expect(state.eggs[0].hp).toBeGreaterThan(0);
+    expect(state.eggs[0].hp).toBeLessThanOrEqual(5);
   });
 
   it('supports multiple rewards from the same egg without blocking its replacement', () => {
