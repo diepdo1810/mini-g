@@ -3,6 +3,30 @@ import { GameBalance } from '../src/game/config/GameBalance';
 import { calculateEggPositions } from '../src/game/domain/EggProgression';
 
 describe('Issue #25 - Mobile 9:16 Viewport & Layout Audit', () => {
+  it('checks actual HUD hit-area configuration for MAP, PAUSE, CLAIM and AUTO', () => {
+    const hud = GameBalance.HUD;
+    const hit = hud.TOUCH_TARGETS;
+    for (const [width, height] of [[360, 640], [412, 915]]) {
+      const scale = Math.min(
+        width / GameBalance.SCREEN.WIDTH,
+        height / GameBalance.SCREEN.HEIGHT
+      );
+      for (const button of Object.values(hit)) {
+        expect(button.width * scale).toBeGreaterThanOrEqual(44);
+        expect(hud.MIN_TOUCH_TARGET_PX * scale).toBeGreaterThanOrEqual(44);
+        expect(button.x - button.width / 2).toBeGreaterThanOrEqual(0);
+        expect(button.x + button.width / 2).toBeLessThanOrEqual(GameBalance.SCREEN.WIDTH);
+        expect(button.y - hud.MIN_TOUCH_TARGET_PX / 2).toBeGreaterThanOrEqual(0);
+        expect(button.y + hud.MIN_TOUCH_TARGET_PX / 2).toBeLessThanOrEqual(GameBalance.SCREEN.HEIGHT);
+      }
+    }
+    // Queue/claim and auto buttons must not overlap.
+    const claim = hit.CLAIM;
+    const auto = hit.AUTO;
+    expect(claim.y + hud.MIN_TOUCH_TARGET_PX / 2)
+      .toBeLessThanOrEqual(auto.y - hud.MIN_TOUCH_TARGET_PX / 2);
+  });
+
   it('ensures board, outer path, eggs, and bottom queue HUD do not overlap vertically', () => {
     const topHudBottom = 80;
     const interWaveBannerY = 110;

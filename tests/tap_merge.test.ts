@@ -97,14 +97,25 @@ describe('Issue #25 - Tap-to-Select and Tap-to-Merge Logic', () => {
     expect(state.heroes.find((h) => h.id === 'hero-a1')?.tier).toBe(1);
   });
 
-  it('clears selectedHeroId when paused or restarting', () => {
+  it('clears selectedHeroId when paused, permits clearing while paused, and resets', () => {
     const hero1 = engine.getState().heroes[0];
     engine.dispatch({ type: 'SELECT_HERO', heroId: hero1.id });
     expect(engine.getState().selectedHeroId).toBe(hero1.id);
 
-    // Restart clears selection
+    engine.dispatch({ type: 'PAUSE' });
+    expect(engine.getState().isPaused).toBe(true);
+    expect(engine.getState().selectedHeroId).toBeUndefined();
+    engine.dispatch({ type: 'SELECT_HERO', heroId: hero1.id });
+    expect(engine.getState().selectedHeroId).toBeUndefined();
+
+    // Simulate clearing after the PAUSE dispatch, as GameScene.togglePause does.
+    engine.getState().selectedHeroId = hero1.id;
+    engine.dispatch({ type: 'SELECT_HERO', heroId: undefined });
+    expect(engine.getState().selectedHeroId).toBeUndefined();
+
     engine.dispatch({ type: 'RESTART' });
     expect(engine.getState().selectedHeroId).toBeUndefined();
+    expect(engine.getState().isPaused).toBe(false);
   });
 
   it('rejects moved gestures starting from empty cell or outside board as tap merge in DragController', () => {

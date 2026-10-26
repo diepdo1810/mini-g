@@ -86,6 +86,16 @@ export const GameBalance = {
     DEFAULT_AUTO_RECEIVE: false,
     MAX_VISIBLE_QUEUE: 3
   },
+  HUD: {
+    // Phaser FIT scales 450 game px to 360 CSS px (0.8x): 56px -> 44.8 CSS px.
+    MIN_TOUCH_TARGET_PX: 56,
+    TOUCH_TARGETS: {
+      MAP: { x: 51, y: 30, width: 76 },
+      PAUSE: { x: 396, y: 30, width: 90 },
+      CLAIM: { x: 320, y: 672, width: 160 },
+      AUTO: { x: 320, y: 742, width: 170 }
+    }
+  },
   DRAG: {
     MIN_DISTANCE: 18,
     LINE_COLOR: 0x38bdf8,

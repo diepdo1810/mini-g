@@ -58,9 +58,7 @@ export class GameScene extends Phaser.Scene {
     }
 
     // Auto-pause when browser tab loses focus / game is hidden
-    this.game.events.on(Phaser.Core.Events.BLUR, () => {
-      this.engine.dispatch({ type: 'PAUSE' });
-    });
+    this.game.events.on(Phaser.Core.Events.BLUR, this.onGameBlur, this);
 
     // Cleanup on scene shutdown or destroy
     this.events.on(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup());
@@ -70,7 +68,14 @@ export class GameScene extends Phaser.Scene {
     this.boardRenderer.render(this.debugMode);
   }
 
+  private onGameBlur(): void {
+    this.dragController.cancelDrag();
+    this.dragController.clearSelection();
+    this.engine.dispatch({ type: 'PAUSE' });
+  }
+
   private cleanup(): void {
+    this.game.events.off(Phaser.Core.Events.BLUR, this.onGameBlur, this);
     this.boardRenderer.destroy();
     this.entityRenderer.destroy();
     this.eggRenderer.destroy();

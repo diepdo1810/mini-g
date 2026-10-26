@@ -328,6 +328,7 @@ export class DragController {
     input.off('pointerup', this.onPointerUp, this);
     input.off('pointerupoutside', this.cancelDrag, this);
     input.off('gameout', this.cancelDrag, this);
+    this.scene.game.events.off(Phaser.Core.Events.BLUR, this.cancelDrag, this);
 
     this.graphics.destroy();
   }

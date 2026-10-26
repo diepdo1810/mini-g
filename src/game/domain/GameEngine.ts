@@ -194,7 +194,13 @@ export class GameEngine {
   }
 
   public selectHero(heroId?: string): void {
+    // Clearing selection is always valid, including while paused/defeated.
+    if (heroId === undefined) {
+      this.state.selectedHeroId = undefined;
+      return;
+    }
     if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return;
+    if (!this.state.heroes.some((hero) => hero.id === heroId)) return;
     this.state.selectedHeroId = heroId;
   }
 
@@ -476,6 +482,7 @@ export class GameEngine {
     switch (action.type) {
       case 'PAUSE':
         this.state.isPaused = true;
+        this.state.selectedHeroId = undefined;
         break;
       case 'RESUME':
         this.state.isPaused = false;

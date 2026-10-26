@@ -31,6 +31,10 @@ export class HudRenderer {
   private queueOverflowText: Phaser.GameObjects.Text;
   private claimHeroBtn: Phaser.GameObjects.Text;
   private autoReceiveBtn: Phaser.GameObjects.Text;
+  private mapTouchTarget: Phaser.GameObjects.Rectangle;
+  private pauseTouchTarget: Phaser.GameObjects.Rectangle;
+  private claimTouchTarget: Phaser.GameObjects.Rectangle;
+  private autoTouchTarget: Phaser.GameObjects.Rectangle;
 
   private overlayBg?: Phaser.GameObjects.Rectangle;
   private bannerText?: Phaser.GameObjects.Text;
@@ -53,9 +57,7 @@ export class HudRenderer {
       backgroundColor: '#1e293b',
       padding: { left: 10, right: 10, top: 6, bottom: 6 },
       fontFamily: 'sans-serif'
-    })
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', callbacks.onGoToMap);
+    });
 
     this.levelText = scene.add.text(88, 22, 'LVL 1', {
       fontSize: '15px',
@@ -79,9 +81,7 @@ export class HudRenderer {
       backgroundColor: '#334155',
       padding: { left: 12, right: 12, top: 6, bottom: 6 },
       fontFamily: 'sans-serif'
-    })
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', callbacks.onTogglePause);
+    });
 
     // Header Line 2: Base HP, Kills, DBG
     this.baseHpText = scene.add.text(16, 54, 'Base HP: 3/3', {
@@ -98,7 +98,7 @@ export class HudRenderer {
     });
 
     // Debug toggle button
-    this.debugBtn = scene.add.text(352, 54, 'DBG: OFF', {
+    this.debugBtn = scene.add.text(352, 76, 'DBG: OFF', {
       fontSize: '11px',
       fontStyle: 'bold',
       color: '#94a3b8',
@@ -166,7 +166,7 @@ export class HudRenderer {
     this.queueOverflowText.setVisible(false);
 
     // Claim Hero Button
-    this.claimHeroBtn = scene.add.text(320, 660, 'NHẬN HERO', {
+    this.claimHeroBtn = scene.add.text(320, 655, 'NHẬN HERO', {
       fontSize: '13px',
       fontStyle: 'bold',
       color: '#ffffff',
@@ -174,12 +174,10 @@ export class HudRenderer {
       padding: { left: 14, right: 14, top: 8, bottom: 8 },
       fontFamily: 'sans-serif'
     })
-      .setOrigin(0.5, 0)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.callbacks.onClaimHero?.());
+      .setOrigin(0.5, 0);
 
     // Auto Receive Toggle Button
-    this.autoReceiveBtn = scene.add.text(320, 706, 'TỰ ĐỘNG: TẮT', {
+    this.autoReceiveBtn = scene.add.text(320, 727, 'TỰ ĐỘNG: TẮT', {
       fontSize: '12px',
       fontStyle: 'bold',
       color: '#cbd5e1',
@@ -187,10 +185,31 @@ export class HudRenderer {
       padding: { left: 12, right: 12, top: 6, bottom: 6 },
       fontFamily: 'sans-serif'
     })
-      .setOrigin(0.5, 0)
-      .setInteractive({ useHandCursor: true })
-      .on('pointerdown', () => this.callbacks.onToggleAutoReceive?.());
+      .setOrigin(0.5, 0);
+
+    // Transparent hit areas are independent from font/label size.
+    // All interactive buttons meet 44 CSS px height at 360x640 in Phaser FIT.
+    const hit = GameBalance.HUD.TOUCH_TARGETS;
+    const touchHeight = GameBalance.HUD.MIN_TOUCH_TARGET_PX;
+    const createTouchTarget = (
+      target: { x: number; y: number; width: number },
+      callback: () => void
+    ): Phaser.GameObjects.Rectangle =>
+      scene.add.rectangle(target.x, target.y, target.width, touchHeight, 0xffffff, 0)
+        .setInteractive({ useHandCursor: true })
+        .on('pointerdown', callback);
+    this.mapTouchTarget = createTouchTarget(hit.MAP, callbacks.onGoToMap);
+    this.pauseTouchTarget = createTouchTarget(hit.PAUSE, callbacks.onTogglePause);
+    this.claimTouchTarget = createTouchTarget(hit.CLAIM, () => {
+      if (this.canClaimHero) this.callbacks.onClaimHero?.();
+    });
+    this.autoTouchTarget = createTouchTarget(hit.AUTO, () => {
+      if (this.canToggleAuto) this.callbacks.onToggleAutoReceive?.();
+    });
   }
+
+  private canClaimHero = false;
+  private canToggleAuto = true;
 
   public render(state: GameState, debug: boolean, onRestart: () => void): void {
     this.levelText.setText(`LVL ${state.currentLevelId}`);
@@ -256,6 +275,8 @@ export class HudRenderer {
     const isQueueEmpty = queue.length === 0;
     const isBoardFull = state.heroes.length >= 25;
     const isBlocked = state.isPaused || state.isGameOver || state.isVictory;
+    this.canClaimHero = !isBlocked && !isCooldown && !isQueueEmpty && !isBoardFull;
+    this.canToggleAuto = !isBlocked;
 
     if (isBlocked) {
       this.claimHeroBtn.setText('NHẬN HERO');
@@ -467,6 +488,10 @@ export class HudRenderer {
     this.queueOverflowText.destroy();
     this.claimHeroBtn.destroy();
     this.autoReceiveBtn.destroy();
+    this.mapTouchTarget.destroy();
+    this.pauseTouchTarget.destroy();
+    this.claimTouchTarget.destroy();
+    this.autoTouchTarget.destroy();
     this.clearOverlay();
   }
 }
