@@ -42,6 +42,7 @@ export class GameEngine {
   private randomSource: RandomSource;
 
   private nextHeroId = 2;
+  private nextHatchId = 1;
   private nextDamageId = 1;
   private nextMonsterId = 2;
 
@@ -65,11 +66,8 @@ export class GameEngine {
       if (!this.state.hatchQueue) {
         this.state.hatchQueue = [];
       }
-      if (this.state.autoReceiveHatch === undefined) {
-        this.state.autoReceiveHatch = GameBalance.HATCH.DEFAULT_AUTO_RECEIVE;
-      }
-      if (this.state.hatchCooldownRemaining === undefined) {
-        this.state.hatchCooldownRemaining = 0;
+      if (this.state.mergeGraceRemaining === undefined) {
+        this.state.mergeGraceRemaining = 0;
       }
       if (!this.state.eggs || this.state.eggs.length === 0) {
         if (this.state.egg) {
@@ -156,6 +154,7 @@ export class GameEngine {
     this.currentTick = 0;
     this.nextDamageId = 1;
     this.nextHeroId = 2;
+    this.nextHatchId = 1;
     this.nextMonsterId = 2;
 
     const firstWave = levelConfig.waves[0];
@@ -179,18 +178,6 @@ export class GameEngine {
     this.interWaveTimer = GameBalance.WAVES.INTER_WAVE_DELAY;
 
     return this.state;
-  }
-
-  public toggleAutoReceive(enabled?: boolean): void {
-    if (enabled !== undefined) {
-      this.state.autoReceiveHatch = enabled;
-    } else {
-      this.state.autoReceiveHatch = !this.state.autoReceiveHatch;
-    }
-  }
-
-  public getHatchCooldown(): number {
-    return this.state.hatchCooldownRemaining;
   }
 
   public selectHero(heroId?: string): void {
@@ -319,163 +306,72 @@ export class GameEngine {
     });
 
     if (targetEgg.hp === 0) {
-      targetEgg.status = 'pending';
-      targetEgg.readyToHatch = true;
-      if (!targetEgg.pendingHero) {
-        const isTutorial =
-          this.state.currentLevelId === 1 &&
-          targetEgg.slotIndex === 0 &&
-          targetEgg.hatchCount === 0 &&
-          this.totalHatchesInMatch === 0;
-        targetEgg.pendingHero = rollHatch(targetEgg.eggLevel, this.randomSource, isTutorial);
-      }
+      // Create independent reward snapshot before resetting the reusable egg slot.
+      const isTutorial =
+        this.state.currentLevelId === 1 &&
+        targetEgg.slotIndex === 0 &&
+        targetEgg.hatchCount === 0 &&
+        this.totalHatchesInMatch === 0;
+      const reward = rollHatch(targetEgg.eggLevel, this.randomSource, isTutorial);
+      this.state.hatchQueue.push({
+        id: `hatch-${this.nextHatchId++}`,
+        eggId: targetEgg.id,
+        slotIndex: targetEgg.slotIndex,
+        reward,
+        remainingSeconds: GameBalance.HATCH.INCUBATION_SECONDS
+      });
+      this.totalHatchesInMatch += 1;
 
-      if (!this.state.hatchQueue.some((q) => q.eggId === targetEgg.id)) {
-        this.state.hatchQueue.push({
-          eggId: targetEgg.id,
-          slotIndex: targetEgg.slotIndex,
-          reward: targetEgg.pendingHero
-        });
-      }
-
-      if (
-        this.state.autoReceiveHatch &&
-        this.state.hatchCooldownRemaining <= 0 &&
-        this.getEmptyCells().length > 0
-      ) {
-        this.hatchOneFromQueue();
-      }
+      // An egg never waits for hero placement. It can be broken again while its
+      // previous reward incubates or waits for space on the board.
+      targetEgg.hatchCount += 1;
+      targetEgg.maxHp = calculateEggMaxHp(targetEgg.eggLevel, targetEgg.hatchCount);
+      targetEgg.hp = targetEgg.maxHp;
+      targetEgg.status = 'active';
+      targetEgg.readyToHatch = false;
+      targetEgg.pendingHero = null;
     }
 
     return true;
   }
 
-  public claimHatchReward(): boolean {
-    if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return false;
-    if (this.state.hatchCooldownRemaining > 0) return false;
-    if (this.state.hatchQueue.length === 0) return false;
-    if (this.getEmptyCells().length === 0) {
-      this.state.notification = {
-        text: 'Bàn cờ đầy — hãy ghép nhân vật!',
-        color: '#f59e0b',
-        life: 2.0
-      };
-      return false;
-    }
-    return this.hatchOneFromQueue();
-  }
+  private processHatchQueue(dt: number): void {
+    const item = this.state.hatchQueue[0];
+    if (!item) return;
 
-  public hatchOneFromQueue(): boolean {
-    if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return false;
-    if (this.state.hatchQueue.length === 0) return false;
+    // Single FIFO incubator: every reward gets the full 2.5s, without
+    // a second receive cooldown and without multi-spawn bursts.
+    item.remainingSeconds = Math.max(0, item.remainingSeconds - dt);
+    if (item.remainingSeconds > 0 || this.state.mergeGraceRemaining > 0) return;
 
     const emptyCells = this.getEmptyCells();
-    if (emptyCells.length === 0) {
-      this.state.notification = {
-        text: 'Bàn cờ đầy — hãy ghép nhân vật!',
-        color: '#f59e0b',
-        life: 2.0
-      };
-      return false;
-    }
-
-    const item = this.state.hatchQueue.shift()!;
-    const egg = this.state.eggs.find((e) => e.id === item.eggId);
-
-    const isTutorial =
-      this.state.currentLevelId === 1 &&
-      item.slotIndex === 0 &&
-      (egg ? egg.hatchCount === 0 : false) &&
-      this.totalHatchesInMatch === 0;
+    if (emptyCells.length <= GameBalance.HATCH.RESERVED_EMPTY_CELLS) return;
 
     let cell: { row: number; col: number };
-    if (isTutorial) {
-      const targetCell = emptyCells.find((c) => c.row === 4 && c.col === 2);
-      if (targetCell) {
-        cell = targetCell;
-      } else {
-        const bottomRowCell = emptyCells.find((c) => c.row === 4);
-        cell = bottomRowCell ?? this.randomSource.choose(emptyCells);
-      }
+    if (item.id === 'hatch-1' && this.state.currentLevelId === 1) {
+      // Tutorial: first A1 appears by the eggs, as in the original game.
+      cell = emptyCells.find((c) => c.row === 4 && c.col === 2)
+        ?? emptyCells.find((c) => c.row === 4)
+        ?? this.randomSource.choose(emptyCells);
     } else {
       cell = this.randomSource.choose(emptyCells);
     }
 
-    const reward = item.reward;
-    const newHero: Hero = {
+    const hero: Hero = {
       id: `hero-${this.nextHeroId++}`,
-      kind: reward.kind,
+      kind: item.reward.kind,
       row: cell.row,
       col: cell.col,
-      tier: reward.heroTier,
+      tier: item.reward.heroTier,
       angle: 0
     };
-
-    this.state.heroes.push(newHero);
-    this.totalHatchesInMatch += 1;
-
-    if (egg) {
-      egg.hatchCount += 1;
-      const nextMaxHp = calculateEggMaxHp(egg.eggLevel, egg.hatchCount);
-      egg.status = 'active';
-      egg.pendingHero = null;
-      egg.readyToHatch = false;
-      egg.maxHp = nextMaxHp;
-      egg.hp = nextMaxHp;
-
-      for (const key of this.eggOrbitCooldowns.keys()) {
-        if (key.endsWith(`:${egg.id}`)) this.eggOrbitCooldowns.delete(key);
-      }
-      for (const key of this.eggDragCooldowns.keys()) {
-        if (key.endsWith(`:${egg.id}`)) this.eggDragCooldowns.delete(key);
-      }
-      for (const key of this.lastEggHitTick.keys()) {
-        if (key.endsWith(`:${egg.id}`)) this.lastEggHitTick.delete(key);
-      }
-    }
-
-    this.state.hatchCooldownRemaining = GameBalance.HATCH.MIN_INTERVAL;
-
+    this.state.heroes.push(hero);
+    this.state.hatchQueue.shift();
     this.state.notification = {
-      text: `+Hero ${reward.kind} (ATK ${2 ** reward.heroTier})`,
-      color: reward.kind === 'A' ? '#38bdf8' : '#34d399',
+      text: `+Hero ${hero.kind} (ATK ${2 ** hero.tier})`,
+      color: hero.kind === 'A' ? '#38bdf8' : '#34d399',
       life: 2.0
     };
-
-    return true;
-  }
-
-  public tryHatchEggs(): boolean {
-    if (this.state.isPaused || this.state.isGameOver || this.state.isVictory) return false;
-
-    // Ensure any eggs in pending state are in hatchQueue
-    for (const egg of this.state.eggs) {
-      if ((egg.status === 'pending' || egg.readyToHatch) && !this.state.hatchQueue.some((q) => q.eggId === egg.id)) {
-        if (!egg.pendingHero) {
-          const isTutorial =
-            this.state.currentLevelId === 1 &&
-            egg.slotIndex === 0 &&
-            egg.hatchCount === 0 &&
-            this.totalHatchesInMatch === 0;
-          egg.pendingHero = rollHatch(egg.eggLevel, this.randomSource, isTutorial);
-        }
-        this.state.hatchQueue.push({
-          eggId: egg.id,
-          slotIndex: egg.slotIndex,
-          reward: egg.pendingHero
-        });
-      }
-    }
-
-    if (this.state.autoReceiveHatch && this.state.hatchCooldownRemaining <= 0) {
-      return this.hatchOneFromQueue();
-    }
-
-    return false;
-  }
-
-  public tryHatchEgg(): boolean {
-    return this.tryHatchEggs();
   }
 
   public dispatch(action: GameAction): void {
@@ -562,7 +458,8 @@ export class GameEngine {
             life: 2.0
           };
 
-          this.tryHatchEgg();
+          // Grace period lets the player use freed board space before auto-deploy.
+          this.state.mergeGraceRemaining = GameBalance.HATCH.MERGE_GRACE_SECONDS;
         } else {
           this.state.notification = {
             text: 'Khác loại hoặc cấp!',
@@ -572,14 +469,6 @@ export class GameEngine {
         }
         break;
       }
-
-      case 'CLAIM_HERO':
-        this.claimHatchReward();
-        break;
-
-      case 'TOGGLE_AUTO_RECEIVE':
-        this.toggleAutoReceive(action.enabled);
-        break;
 
       case 'SELECT_HERO':
         this.selectHero(action.heroId);
@@ -627,20 +516,11 @@ export class GameEngine {
       }
     }
 
-    // Update hatch cooldown timer
-    if (this.state.hatchCooldownRemaining > 0) {
-      this.state.hatchCooldownRemaining = Math.max(0, this.state.hatchCooldownRemaining - dt);
+    // Timers follow the simulated clock: pause, victory and defeat freeze both.
+    if (this.state.mergeGraceRemaining > 0) {
+      this.state.mergeGraceRemaining = Math.max(0, this.state.mergeGraceRemaining - dt);
     }
-
-    // Auto receive logic: when enabled and off cooldown
-    if (
-      this.state.autoReceiveHatch &&
-      this.state.hatchCooldownRemaining <= 0 &&
-      this.state.hatchQueue.length > 0 &&
-      this.getEmptyCells().length > 0
-    ) {
-      this.hatchOneFromQueue();
-    }
+    this.processHatchQueue(dt);
 
     // 2. Wave Scheduler: Spawn enemies according to current wave config
     const currentWaveIndex = Math.min(this.state.wave - 1, this.currentLevel.waves.length - 1);
