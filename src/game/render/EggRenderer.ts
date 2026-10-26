@@ -89,11 +89,9 @@ export class EggRenderer {
       this.lastHpMap.set(egg.id, egg.hp);
 
       const isFlashing = (this.flashLifeMap.get(egg.id) ?? 0) > 0;
-      const isPending = egg.status === 'pending' || egg.readyToHatch;
-
       // 1. Egg Body
       const baseColor = EGG_LEVEL_COLORS[eggLevel] ?? 0xf59e0b;
-      let fillColor = isPending ? 0x16a34a : baseColor;
+      let fillColor = baseColor;
       if (isFlashing) {
         fillColor = 0xffffff;
       }
@@ -102,7 +100,7 @@ export class EggRenderer {
       this.graphics.fillEllipse(x, y, rx * 2, ry * 2);
 
       // Stroke
-      const strokeColor = isPending ? 0x4ade80 : 0xffffff;
+      const strokeColor = 0xffffff;
       this.graphics.lineStyle(2.5, strokeColor, 0.95);
       this.graphics.strokeEllipse(x, y, rx * 2, ry * 2);
 
@@ -127,13 +125,8 @@ export class EggRenderer {
         hpText.setPosition(x, y);
         hpText.setVisible(true);
 
-        if (isPending) {
-          hpText.setText('READY');
-          hpText.setColor('#4ade80');
-        } else {
-          hpText.setText(`${egg.hp}/${egg.maxHp}`);
-          hpText.setColor('#ffffff');
-        }
+        hpText.setText(`${egg.hp}/${egg.maxHp}`);
+        hpText.setColor('#ffffff');
       }
 
       // Egg level badge if > 1
@@ -155,15 +148,9 @@ export class EggRenderer {
       this.badgeTexts[i]?.setVisible(false);
     }
 
-    // Hint text
-    const anyPending = eggs.some((e) => e.status === 'pending' || e.readyToHatch);
-    if (anyPending) {
-      this.hintText.setText('Trứng đã vỡ — ghép hero để nhận thêm chỗ!');
-      this.hintText.setColor('#4ade80');
-    } else {
-      this.hintText.setText('Kéo hoặc đặt Hero hàng dưới để chém trứng');
-      this.hintText.setColor('#94a3b8');
-    }
+    // Eggs stay hittable: rewards incubate independently in the HUD queue.
+    this.hintText.setText('Đập trứng liên tục · Hero tự ấp trong hàng chờ');
+    this.hintText.setColor('#94a3b8');
   }
 
   public destroy(): void {
