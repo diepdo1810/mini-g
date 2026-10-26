@@ -44,6 +44,11 @@ Tỉ lệ mở Hero: trứng cấp 1 → ATK 1 (100%); cấp 2 → ATK 1/2 (50%/
 - `D`: Debug hitboxes; `P`: Pause/Resume; `R`: Restart level.
 - Nút Map, Retry, Next Level theo trạng thái game.
 
+## Trung tâm thiết kế & tiến độ
+
+- **[Mini-G Design Hub](docs/design/README.md)** — xem ý tưởng Hero/Map, roadmap, board và quy trình tạo ảnh trên GitHub.
+- [GitHub Issues](https://github.com/diepdo1810/mini-g/issues) — trạng thái công việc thực tế.
+
 ## Mã nguồn và tài liệu
 
 - [GameEngine](src/game/domain/GameEngine.ts): luật combat, trứng, quái, wave.
