@@ -485,7 +485,9 @@ export class GameEngine {
     }
 
     this.currentTick += 1;
-    const dt = Math.min(rawDeltaSeconds, GameBalance.COMBAT.MAX_DELTA_SECONDS);
+    // Pacing uses elapsed time; only movement/combat are capped for stability.
+    const elapsedSeconds = Math.max(0, rawDeltaSeconds);
+    const dt = Math.min(elapsedSeconds, GameBalance.COMBAT.MAX_DELTA_SECONDS);
     const perimeter = this.getPathPerimeter();
 
     // 1. Update cooldown timers
@@ -516,11 +518,11 @@ export class GameEngine {
       }
     }
 
-    // Timers follow the simulated clock: pause, victory and defeat freeze both.
+    // Pacing timers use elapsed time; pause, victory and defeat freeze them.
     if (this.state.mergeGraceRemaining > 0) {
-      this.state.mergeGraceRemaining = Math.max(0, this.state.mergeGraceRemaining - dt);
+      this.state.mergeGraceRemaining = Math.max(0, this.state.mergeGraceRemaining - elapsedSeconds);
     }
-    this.processHatchQueue(dt);
+    this.processHatchQueue(elapsedSeconds);
 
     // 2. Wave Scheduler: Spawn enemies according to current wave config
     const currentWaveIndex = Math.min(this.state.wave - 1, this.currentLevel.waves.length - 1);
@@ -683,7 +685,7 @@ export class GameEngine {
           };
         }
       } else {
-        this.interWaveTimer -= dt;
+        this.interWaveTimer -= elapsedSeconds;
         this.state.interWaveCountdown = Math.max(0, this.interWaveTimer);
         if (this.interWaveTimer <= 0) {
           this.state.wave += 1;
