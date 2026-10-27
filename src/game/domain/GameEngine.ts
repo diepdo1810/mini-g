@@ -518,7 +518,7 @@ export class GameEngine {
       }
     }
 
-    // Timers follow the simulated clock: pause, victory and defeat freeze both.
+    // Pacing timers use elapsed time; pause, victory and defeat freeze them.
     if (this.state.mergeGraceRemaining > 0) {
       this.state.mergeGraceRemaining = Math.max(0, this.state.mergeGraceRemaining - elapsedSeconds);
     }
